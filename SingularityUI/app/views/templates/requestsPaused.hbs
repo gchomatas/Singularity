@@ -1,0 +1,104 @@
+<header class="jumbotron subhead" id="overview">
+    <h1>Paused Requests</h1>
+</header>
+
+<section>
+    <div class="row-fluid">
+        <div class="span12">
+            <ul class="nav nav-tabs">
+                <li>
+                    <a href="/singularity/requests" data-route="requests">Active</a>
+                </li>
+                <li class="active">
+                    <a href="/singularity/requests/paused" data-route="requests/paused">Paused</a>
+                </li>
+                <li>
+                    <a href="/singularity/requests/pending" data-route="requests/pending">Pending</a>
+                </li>
+                <li>
+                    <a href="/singularity/requests/cleaning" data-route="requests/cleaning">Cleaning</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="row-fluid">
+        <input type="search" placeholder="Filter requests..." required />
+    </div>
+    <h2>Paused</h2>
+    <div class="row-fluid">
+        <div class="span12">
+            {{#if requests.length}}
+                <table class="table" data-sortable>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Requested</th>
+                            <th>Deploy User</th>
+                            <th>Instances</th>
+                            <th data-sortable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#eachWithFn requests}}
+                            <tr data-request-id="{{ id }}">
+                                <td><span title="{{ id }}"><a href="/singularity/request/{{ id }}" data-route="request/{{ id }}">{{#hardBreak name}}{{/hardBreak}}</a></span></td>
+                                <td data-value="{{ timestamp }}"><span title="{{ timestamp }}">{{ timestampHuman }}</span></td>
+                                <td>{{ deployUser }}</td>
+                                <td>{{ instances }}</td>
+                                <td>
+                                    <a data-request-id="{{ id }}" data-action="viewJSON">JSON</a>
+                                    &nbsp;&nbsp;
+                                    <a data-request-id="{{ id }}" data-action="deletePaused">Remove</a>
+                                    &nbsp;&nbsp;
+                                    <a data-request-id="{{ id }}" data-action="unpause">Unpause</a>
+                                </td>
+                            </tr>
+                        {{/eachWithFn}}
+                    </tbody>
+                </table>
+            {{else}}
+                <center><p>No paused requests.</p></center>
+            {{/if}}
+        </div>
+    </div>
+    <h2>Scheduled</h2>
+    <div class="row-fluid">
+        <div class="span12">
+            {{#if requestsScheduled.length}}
+                <table class="table" data-sortable>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Requested</th>
+                            <th>Deploy User</th>
+                            <th>Schedule</th>
+                            <th data-sortable="false"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#eachWithFn requestsScheduled}}
+                            <tr data-request-id="{{ id }}">
+                                <td><span title="{{ id }}"><a href="/singularity/request/{{ id }}" data-route="request/{{ id }}">{{#hardBreak name}}{{/hardBreak}}</a></span></td>
+                                <td data-value="{{ timestamp }}"><span title="{{ timestamp }}">{{ timestampHuman }}</span></td>
+                                <td>{{ deployUser }}</td>
+                                <td>{{ schedule }}</td>
+                                <td>
+                                    <a data-request-id="{{ id }}" data-action="viewJSON">JSON</a>
+                                    &nbsp;&nbsp;
+                                    <a data-request-id="{{ id }}" data-action="deletePaused">Remove</a>
+                                    &nbsp;&nbsp;
+                                    <a data-request-id="{{ id }}" data-action="unpause">Unpause</a>
+                                </td>
+                            </tr>
+                        {{/eachWithFn}}
+                    </tbody>
+                </table>
+            {{else}}
+                <center><p>No paused scheduled requests.</p></center>
+            {{/if}}
+        </div>
+    </div>
+</section>

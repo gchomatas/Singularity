@@ -29,6 +29,14 @@ public class SMTPConfiguration {
 
   @NotNull
   @JsonProperty
+  private int mailThreads = 1;
+  
+  @NotNull
+  @JsonProperty
+  private int mailMaxThreads = 3;
+  
+  @NotNull
+  @JsonProperty
   private boolean ssl = false;
 
   @NotNull
@@ -39,8 +47,20 @@ public class SMTPConfiguration {
   @JsonProperty
   private List<String> admins = Collections.emptyList();
 
+  @NotNull
+  @JsonProperty
+  private boolean includeAdminsOnAllMails = false;
+
   @JsonProperty("logging")
   private SMTPLoggingConfiguration smtpLoggingConfiguration = new SMTPLoggingConfiguration();
+
+  public boolean isIncludeAdminsOnAllMails() {
+    return includeAdminsOnAllMails;
+  }
+
+  public void setIncludeAdminsOnAllMails(boolean includeAdminsOnAllMails) {
+    this.includeAdminsOnAllMails = includeAdminsOnAllMails;
+  }
   
   public SMTPLoggingConfiguration getSmtpLoggingConfiguration() {
     return smtpLoggingConfiguration;
@@ -58,6 +78,22 @@ public class SMTPConfiguration {
     this.username = username;
   }
 
+  public int getMailThreads() {
+    return mailThreads;
+  }
+
+  public void setMailThreads(int mailThreads) {
+    this.mailThreads = mailThreads;
+  }
+
+  public int getMailMaxThreads() {
+    return mailMaxThreads;
+  }
+
+  public void setMailMaxThreads(int mailMaxThreads) {
+    this.mailMaxThreads = mailMaxThreads;
+  }
+  
   public Optional<String> getPassword() {
     return Optional.fromNullable(password);
   }

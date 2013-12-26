@@ -12,23 +12,26 @@ import com.google.inject.Inject;
 import com.hubspot.singularity.config.SingularityConfiguration;
 import com.hubspot.singularity.data.StateManager;
 
-public class SingularityStatePoller {
+public class SingularityStatePoller implements SingularityCloseable {
 
   private final static Logger LOG = LoggerFactory.getLogger(SingularityStatePoller.class);
 
   private final StateManager stateManager;
   private final long saveStateEverySeconds;
   
+  private final SingularityCloser closer;
+  
   private ScheduledExecutorService executorService;
   private Runnable stateUpdateRunnable;
   
   @Inject
-  public SingularityStatePoller(StateManager stateManager, SingularityConfiguration configuration) {
+  public SingularityStatePoller(StateManager stateManager, SingularityConfiguration configuration, SingularityCloser closer) {
     this.stateManager = stateManager;
     this.saveStateEverySeconds = configuration.getSaveStateEverySeconds();
+    this.closer = closer;
   }
   
-  public void start(final SingularityManaged managed, final SingularityAbort abort) {
+  public void start(final SingularityLeaderController managed, final SingularityAbort abort) {
     final SingularityStateGenerator generator = new SingularityStateGenerator(managed);
     
     LOG.info(String.format("Starting a state poller that will report every %s seconds", saveStateEverySeconds));
@@ -57,17 +60,9 @@ public class SingularityStatePoller {
     this.executorService.execute(stateUpdateRunnable);
   }
   
-  private final int WAIT_SECONDS = 1;
-  
-  public void stop() {
-    LOG.info(String.format("Stopping state poller (waiting %s seconds) ... ", WAIT_SECONDS));
-    
-    try {
-      executorService.shutdownNow();
-      executorService.awaitTermination(WAIT_SECONDS, TimeUnit.SECONDS);
-    } catch (Throwable t) {
-      LOG.warn("While shutting down state poller", t);
-    }
+  @Override
+  public void close() {
+    closer.shutdown(getClass().getName(), executorService);
   }
 
 }

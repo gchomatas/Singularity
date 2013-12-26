@@ -3,6 +3,14 @@
 a
     cursor pointer
 
+a.disabled
+    cursor none
+    pointer-events none
+    color #999
+
+a.disabled:hover
+    background-color transparent
+
 .link-spacer
     opacity 0.2
     padding 0px 5px
@@ -30,7 +38,7 @@ tr.filtered
 // Overrides
 
 #nav-user-name
-    cursor: default
+    cursor default
 
 .btn-navbar:hover
     background-position initial

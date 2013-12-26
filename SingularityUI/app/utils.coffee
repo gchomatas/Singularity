@@ -1,12 +1,12 @@
 class Utils
 
-    getHTMLTitleFromHistoryFragment: (fragment) ->
+    @getHTMLTitleFromHistoryFragment: (fragment) ->
         _.capitalize(fragment.split('\/').join(' '))
 
-    stringJSON: (object) ->
+    @stringJSON: (object) ->
         JSON.stringify object, null, '    '
 
-    viewJSON: (type, objectId) ->
+    @viewJSON: (type, objectId) ->
         lookupObject = {}
 
         if type is 'task'
@@ -19,14 +19,7 @@ class Utils
                 width: 800
             message: "<pre>#{ lookupObject[objectId].JSONString }</pre>"
 
-    getAcrossCollections: (collectionStrings, id) ->
-        model = undefined
-        _.each collectionStrings, (collectionString) ->
-            collection = app.collections[collectionString]
-            model = collection.get(id) ? model
-        return model
-
-    setupSortableTables: ->
+    @setupSortableTables: ->
         sortable.init()
 
-module.exports = new Utils
+module.exports = Utils

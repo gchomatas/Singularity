@@ -1,5 +1,5 @@
 <header class="jumbotron subhead" id="overview">
-    <h1>{{#hardBreak request.name}}{{/hardBreak}}</h1>
+    <h1>{{#hardBreak request.name}}{{/hardBreak}} <small><a data-request-id="{{ request.id }}" data-action="viewObjectJSON">JSON</a></small></h1>
     <p class="lead">{{#hardBreak request.id}}{{/hardBreak}}</p>
 </header>
 
@@ -17,8 +17,7 @@
                             <th>Status</th>
                             <th>Created</th>
                             <th>Updated</th>
-                            <th data-sortable="false">JSON</th>
-                            <th data-sortable="false">Files</th>
+                            <th data-sortable="false"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -28,8 +27,11 @@
                                 <td>{{ lastStatusHuman }}</td>
                                 <td data-value="{{ createdAt }}">{{ createdAtHuman }}</td>
                                 <td data-value="{{ updatedAt }}">{{ updatedAtHuman }}</td>
-                                <td><a data-task-id="{{ id }}" class="dont-route view-json">JSON</a></td>
-                                <td><a href="/singularity/task/{{ id }}/files/" data-route="/task/{{ id }}/files/">Files</a></td>
+                                <td>
+                                    <a data-task-id="{{ id }}" data-action="viewJSON">JSON</a>
+                                    &nbsp;&nbsp;
+                                    <a href="/singularity/task/{{ id }}/files/" data-route="/task/{{ id }}/files/">Files</a>
+                                </td>
                             </tr>
                         {{/eachWithFn}}
                     </tbody>
@@ -37,13 +39,15 @@
             </div>
         </div>
     {{else}}
-        {{#if fetchDone}}
+        {{#if fetchDoneActive}}
             <center><p>No active tasks.</p></center>
         {{else}}
             <div class="page-loader centered"></div>
         {{/if}}
     {{/if}}
+</section>
 
+<section>
     <div class="page-header">
         <h1>Scheduled Tasks</h1>
     </div>
@@ -63,7 +67,7 @@
                             <tr data-task-id="{{ id }}">
                                 <td><span title="{{ id }}">{{#hardBreak name}}{{/hardBreak}}</span></td>
                                 <td data-value="{{ nextRunAt }}"><span title="{{ nextRunAt }}">{{ nextRunAtHuman }}</span></td>
-                                <td><a data-task-id="{{ id }}" class="dont-route view-json">JSON</a></td>
+                                <td><a data-task-id="{{ id }}" data-action="viewJSON">JSON</a></td>
                             </tr>
                         {{/eachWithFn}}
                     </tbody>
@@ -71,57 +75,13 @@
             </div>
         </div>
     {{else}}
-        {{#if fetchDone}}
-            <center><p>No scheduled tasks.</p></center>
-        {{else}}
-            <div class="page-loader centered"></div>
-        {{/if}}
+        <center><p>No scheduled tasks.</p></center>
     {{/if}}
+</section>
 
+<section>
     <div class="page-header">
-        <h1>Historical Tasks <small>Last 100</small></h1>
+        <h1>Historical Tasks</h1>
     </div>
-    {{#if requestTasksHistorical}}
-        <div class="row-fluid">
-            <div class="span12">
-                <table class="table" data-sortable>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Updated</th>
-                            <th data-sortable="false">Files</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{#eachWithFn requestTasksHistorical}}
-                            <tr data-task-id="{{ id }}">
-                                <td><span title="{{ id }}">{{#hardBreak name}}{{/hardBreak}}</span></td>
-                                <td>{{ lastStatusHuman }}</td>
-                                <td data-value="{{ createdAt }}">{{ createdAtHuman }}</td>
-                                <td data-value="{{ updatedAt }}">{{ updatedAtHuman }}</td>
-                                <td><a href="/singularity/task/{{ id }}/files/" data-route="/task/{{ id }}/files/">Files</a></td>
-                            </tr>
-                        {{/eachWithFn}}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    {{else}}
-        {{#if fetchDone}}
-            <center><p>No histocial tasks.</p></center>
-        {{else}}
-            <div class="page-loader centered"></div>
-        {{/if}}
-    {{/if}}
-
-    <div class="page-header">
-        <h1>JSON</h1>
-    </div>
-    <div class="row-fluid">
-        <div class="span12">
-            <pre>{{ request.JSONString }}</pre>
-        </div>
-    </div>
+    <div class="historical-tasks-paginated"></div>
 </section>

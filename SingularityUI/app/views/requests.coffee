@@ -3,12 +3,20 @@ View = require './view'
 class RequestsView extends View
 
     templateRequestsActive: require './templates/requestsActive'
+    templateRequestsPaused: require './templates/requestsPaused'
     templateRequestsPending: require './templates/requestsPending'
     templateRequestsCleaning: require './templates/requestsCleaning'
 
     render: (requestsFilter) =>
-        @collection = app.collections.requestsActive
-        template = @templateRequestsActive
+        return unless requestsFilter
+
+        if requestsFilter is 'active'
+            @collection = app.collections.requestsActive
+            template = @templateRequestsActive
+
+        if requestsFilter is 'paused'
+            @collection = app.collections.requestsPaused
+            template = @templateRequestsPaused
 
         if requestsFilter is 'pending'
             @collection = app.collections.requestsPending
@@ -18,8 +26,16 @@ class RequestsView extends View
             @collection = app.collections.requestsCleaning
             template = @templateRequestsCleaning
 
-        context =
-            requests: _.pluck(@collection.models, 'attributes')
+        context = {}
+
+        if requestsFilter in ['active', 'paused']
+            context.requests = _.filter(_.pluck(@collection.models, 'attributes'), (r) => not r.scheduled)
+            context.requestsScheduled = _.filter(_.pluck(@collection.models, 'attributes'), (r) => r.scheduled)
+            context.requests.reverse()
+            context.requestsScheduled.reverse()
+
+        else
+            context.requests = _.pluck(@collection.models, 'attributes')
 
         @$el.html template context
 
@@ -28,7 +44,7 @@ class RequestsView extends View
         utils.setupSortableTables()
 
     setupEvents: ->
-        @$el.find('.view-json').unbind('click').click (event) ->
+        @$el.find('[data-action="viewJSON"]').unbind('click').click (event) ->
             utils.viewJSON 'request', $(event.target).data('request-id')
 
         $removeLinks = @$el.find('[data-action="remove"]')
@@ -45,6 +61,35 @@ class RequestsView extends View
                     delete app.allRequests[requestModel.get('id')] # TODO - move to model on destroy?
                     @collection.remove(requestModel)
                     row.remove()
+
+        $deletePausedLinks = @$el.find('[data-action="deletePaused"]')
+
+        $deletePausedLinks.unbind('click').on 'click', (e) =>
+            row = $(e.target).parents('tr')
+            requestModel = @collection.get($(e.target).data('request-id'))
+
+            vex.dialog.confirm
+                message: "<p>Are you sure you want to delete the paused request:</p><pre>#{ requestModel.get('id') }</pre>"
+                callback: (confirmed) =>
+                    return unless confirmed
+                    row.remove()
+                    requestModel.deletePaused().done =>
+                        delete app.allRequests[requestModel.get('id')]
+                        @collection.remove(requestModel)
+
+        $unpauseLinks = @$el.find('[data-action="unpause"]')
+
+        $unpauseLinks .unbind('click').on 'click', (e) =>
+            row = $(e.target).parents('tr')
+            requestModel = @collection.get($(e.target).data('request-id'))
+
+            vex.dialog.confirm
+                message: "<p>Are you sure you want to delete the paused request:</p><pre>#{ requestModel.get('id') }</pre>"
+                callback: (confirmed) =>
+                    return unless confirmed
+                    row.remove()
+                    requestModel.unpause().done =>
+                        @render()
 
     setUpSearchEvents: =>
         $search = @$el.find('input[type="search"]')

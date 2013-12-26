@@ -8,7 +8,7 @@ import com.hubspot.mesos.JavaUtils;
 public class SingularityPendingRequestId extends SingularityId {
 
   public enum PendingType {
-    IMMEDIATE, REGULAR
+    IMMEDIATE, STARTUP, REGULAR, UNPAUSED, RETRY, BOUNCE
   }
   
   private final String requestId;

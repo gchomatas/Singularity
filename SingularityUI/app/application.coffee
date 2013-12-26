@@ -3,6 +3,7 @@ Router = require 'lib/router'
 State = require 'models/State'
 
 RequestsActive = require 'collections/RequestsActive'
+RequestsPaused = require 'collections/RequestsPaused'
 RequestsPending = require 'collections/RequestsPending'
 RequestsCleaning = require 'collections/RequestsCleaning'
 
@@ -19,8 +20,6 @@ class Application
         @allTasks = {}
         @allRequests = {}
 
-        # Get users, projects, and targets, and user settings
-        # before actually starting the app
         @fetchResources =>
 
             $('.page-loader.fixed').hide()
@@ -51,13 +50,17 @@ class Application
             collection: RequestsActive
             error_phrase: 'requests'
         }, {
+            collection_key: 'requestsPaused'
+            collection: RequestsPaused
+            error_phrase: 'paused requests'
+        }, {
             collection_key: 'requestsPending'
             collection: RequestsPending
-            error_phrase: 'requests'
+            error_phrase: 'pending requests'
         }, {
             collection_key: 'requestsCleaning'
             collection: RequestsCleaning
-            error_phrase: 'requests'
+            error_phrase: 'cleaning requests'
         }, {
             collection_key: 'tasksActive'
             collection: TasksActive

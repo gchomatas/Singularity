@@ -7,18 +7,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.hubspot.singularity.SingularityDriverManager;
 import com.hubspot.singularity.SingularityPendingTaskId;
 import com.hubspot.singularity.SingularityRequest;
-import com.hubspot.singularity.SingularitySlave;
+import com.hubspot.singularity.SingularityRequestCleanup;
+import com.hubspot.singularity.SingularityRequestCleanup.RequestCleanupType;
 import com.hubspot.singularity.SingularityTaskCleanup;
-import com.hubspot.singularity.SingularityTaskCleanup.CleanupType;
+import com.hubspot.singularity.SingularityTaskCleanup.TaskCleanupType;
 import com.hubspot.singularity.SingularityTaskId;
 import com.hubspot.singularity.config.SingularityConfiguration;
-import com.hubspot.singularity.data.RackManager;
 import com.hubspot.singularity.data.RequestManager;
-import com.hubspot.singularity.data.SlaveManager;
 import com.hubspot.singularity.data.TaskManager;
 
 public class SingularityCleaner extends SingularitySchedulerBase {
@@ -29,26 +29,20 @@ public class SingularityCleaner extends SingularitySchedulerBase {
   private final RequestManager requestManager;
   private final SingularityDriverManager driverManager;
   
-  private final SlaveManager slaveManager;
-  private final RackManager rackManager;
-  
   private final long killTasksAfterNewestTaskIsAtLeastMillis;
   
   @Inject
-  public SingularityCleaner(TaskManager taskManager, RequestManager requestManager, SingularityDriverManager driverManager, SlaveManager slaveManager, RackManager rackManager, SingularityConfiguration configuration) {
-    super(taskManager);
-    
+  public SingularityCleaner(TaskManager taskManager, RequestManager requestManager, SingularityDriverManager driverManager, SingularityConfiguration configuration) {
     this.taskManager = taskManager;
     this.requestManager = requestManager;
     this.driverManager = driverManager;
-    this.slaveManager = slaveManager;
-    this.rackManager = rackManager;
     
     this.killTasksAfterNewestTaskIsAtLeastMillis = TimeUnit.SECONDS.toMillis(configuration.getKillDecomissionedTasksAfterNewTasksSeconds());
   }
 
-  private boolean shouldKillTask(SingularityTaskCleanup taskCleanup, List<SingularityTaskId> activeTaskIds, List<String> decomissioningRacks, List<SingularitySlave> decomissioningSlaves) {
-    if (taskCleanup.getCleanupTypeEnum() == CleanupType.USER_REQUESTED) {
+  private boolean shouldKillTask(SingularityTaskCleanup taskCleanup, List<SingularityTaskId> activeTaskIds, List<SingularityTaskId> cleaningTasks) {
+    if (taskCleanup.getCleanupTypeEnum() == TaskCleanupType.USER_REQUESTED) {
+      LOG.debug(String.format("Killing a task %s because it was user requested", taskCleanup));
       return true;
     }
     
@@ -56,10 +50,11 @@ public class SingularityCleaner extends SingularitySchedulerBase {
     Optional<SingularityRequest> request = requestManager.fetchRequest(taskCleanup.getRequestId());
     
     if (!request.isPresent()) {
+      LOG.debug(String.format("Killing a task %s because the request was missing", taskCleanup));;
       return true;
     }
     
-    List<SingularityTaskId> matchingTasks = getMatchingActiveTaskIds(taskCleanup.getRequestId(), activeTaskIds, decomissioningRacks, decomissioningSlaves);
+    List<SingularityTaskId> matchingTasks = getMatchingActiveTaskIds(taskCleanup.getRequestId(), activeTaskIds, cleaningTasks);
     
     final long now = System.currentTimeMillis();
     long newestTaskDurationMillis = Long.MAX_VALUE;
@@ -71,18 +66,18 @@ public class SingularityCleaner extends SingularitySchedulerBase {
       }
     }
     
-    // if we have at least required # of instances and the newest task is older than the threshold, kill it.
-    if (matchingTasks.size() >= request.get().getInstances() && newestTaskDurationMillis > killTasksAfterNewestTaskIsAtLeastMillis) {
-      return true;
-    }
+    boolean hasEnoughTasksWhichAreOldEnoughToKillThisTask = matchingTasks.size() >= request.get().getInstances() && newestTaskDurationMillis > killTasksAfterNewestTaskIsAtLeastMillis;
+  
+    LOG.debug(String.format("%s a task %s because there are %s active tasks (requirement %s) and the newest task is %sms old (must be at least %sms)", 
+        hasEnoughTasksWhichAreOldEnoughToKillThisTask ? "Killing" : "Not killing", taskCleanup, matchingTasks.size(), request.get().getInstances(), newestTaskDurationMillis, killTasksAfterNewestTaskIsAtLeastMillis));
     
-    return false;
+    return hasEnoughTasksWhichAreOldEnoughToKillThisTask;
   }
   
   private void drainRequestCleanupQueue() {
     final long start = System.currentTimeMillis();
 
-    final List<String> cleanupRequests = requestManager.getCleanupRequestIds();
+    final List<SingularityRequestCleanup> cleanupRequests = requestManager.getCleanupRequests();
     
     LOG.debug(String.format("Request cleanup queue had %s requests", cleanupRequests.size()));
     
@@ -98,8 +93,27 @@ public class SingularityCleaner extends SingularitySchedulerBase {
     int numTasksKilled = 0;
     int numScheduledTasksRemoved = 0;
     
-    for (String requestId : cleanupRequests) {
-      if (!requestManager.fetchRequest(requestId).isPresent()) {
+    for (SingularityRequestCleanup requestCleanup : cleanupRequests) {
+      final String requestId = requestCleanup.getRequestId();
+      final Optional<SingularityRequest> request = requestManager.fetchRequest(requestId);
+      
+      boolean killTasks = true;
+      
+      if (requestCleanup.getCleanupTypeEnum() == RequestCleanupType.PAUSING) {
+        if (request.isPresent()) {
+          requestManager.pause(request.get());
+        } else {
+          killTasks = false;
+          LOG.info(String.format("Not pausing %s, because it didn't exist in active requests", requestId));
+        }
+      } else if (requestCleanup.getCleanupTypeEnum() == RequestCleanupType.DELETING) {
+        if (request.isPresent()) {        
+          killTasks = false;
+          LOG.info(String.format("Not cleaning %s, because it existed", requestId));
+        }
+      }
+      
+      if (killTasks) {
         
         for (SingularityTaskId matchingTaskId : SingularityTaskId.filter(activeTaskIds, requestId)) {
           driverManager.kill(matchingTaskId.toString());
@@ -111,8 +125,6 @@ public class SingularityCleaner extends SingularitySchedulerBase {
           numScheduledTasksRemoved++;
         }
         
-      } else {
-        LOG.info(String.format("Not cleaning %s, it existed", requestId));
       }
      
       requestManager.deleteCleanRequest(requestId);
@@ -137,17 +149,19 @@ public class SingularityCleaner extends SingularitySchedulerBase {
       return;
     }
     
+    final List<SingularityTaskId> cleaningTasks = Lists.newArrayListWithCapacity(cleanupTasks.size());
+    for (SingularityTaskCleanup cleanupTask : cleanupTasks) {
+      cleaningTasks.add(SingularityTaskId.fromString(cleanupTask.getTaskId()));
+    }
+    
     LOG.info(String.format("Cleaning up %s tasks", cleanupTasks.size()));
    
     final List<SingularityTaskId> activeTaskIds = taskManager.getActiveTaskIds(); 
-    final List<String> decomissioningRacks = rackManager.getDecomissioning();
-    final List<SingularitySlave> decomissioningSlaves = slaveManager.getDecomissioningObjects();
-    
     
     int killedTasks = 0;
     
     for (SingularityTaskCleanup cleanupTask : cleanupTasks) {
-      if (shouldKillTask(cleanupTask, activeTaskIds, decomissioningRacks, decomissioningSlaves)) {
+      if (shouldKillTask(cleanupTask, activeTaskIds, cleaningTasks)) {
         driverManager.kill(cleanupTask.getTaskId());
         
         taskManager.deleteCleanupTask(cleanupTask.getTaskId());

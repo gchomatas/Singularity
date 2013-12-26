@@ -1,21 +1,17 @@
 package com.hubspot.singularity.resources;
 
-import java.util.List;
+import com.google.inject.Inject;
+import com.hubspot.singularity.SingularityHostState;
+import com.hubspot.singularity.SingularityScheduledTasksInfo;
+import com.hubspot.singularity.SingularityState;
+import com.hubspot.singularity.data.*;
+import com.hubspot.singularity.hooks.WebhookManager;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-
-import com.google.inject.Inject;
-import com.hubspot.singularity.SingularityHostState;
-import com.hubspot.singularity.SingularityState;
-import com.hubspot.singularity.data.RackManager;
-import com.hubspot.singularity.data.RequestManager;
-import com.hubspot.singularity.data.SlaveManager;
-import com.hubspot.singularity.data.StateManager;
-import com.hubspot.singularity.data.TaskManager;
-import com.hubspot.singularity.hooks.WebhookManager;
+import java.util.List;
 
 @Path("/state")
 @Produces({ MediaType.APPLICATION_JSON })
@@ -43,10 +39,13 @@ public class StateResource {
     final int activeTasks = taskManager.getNumActiveTasks();
     final int scheduledTasks = taskManager.getNumScheduledTasks();
     final int cleaningTasks = taskManager.getNumCleanupTasks();
+
+    final SingularityScheduledTasksInfo scheduledTasksInfo = SingularityScheduledTasksInfo.getInfo(taskManager.getScheduledTasks());
     
     final int requests = requestManager.getNumRequests();
     final int pendingRequests = requestManager.getSizeOfPendingQueue();
     final int cleaningRequests = requestManager.getSizeOfCleanupQueue();
+    final int pausedRequests = requestManager.getNumPausedRequests();
     
     final int activeRacks = rackManager.getNumActive();
     final int deadRacks = rackManager.getNumDead();
@@ -60,7 +59,7 @@ public class StateResource {
     
     final List<SingularityHostState> states = stateManager.getHostStates();
     
-    return new SingularityState(activeTasks, requests, scheduledTasks, pendingRequests, cleaningRequests, activeSlaves, deadSlaves, decomissioningSlaves, activeRacks, deadRacks, decomissioningRacks, numWebhooks, cleaningTasks, states);
+    return new SingularityState(activeTasks, requests, pausedRequests, scheduledTasks, pendingRequests, cleaningRequests, activeSlaves, deadSlaves, decomissioningSlaves, activeRacks, deadRacks, decomissioningRacks, numWebhooks, cleaningTasks, states, scheduledTasksInfo.getNumLateTasks(), scheduledTasksInfo.getNumFutureTasks(), scheduledTasksInfo.getMaxTaskLag());
   }
   
 }

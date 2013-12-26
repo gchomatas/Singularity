@@ -8,7 +8,7 @@ class TaskView extends View
     template: require './templates/task'
 
     initialize: =>
-        @taskFiles = {} # Temporary
+        @taskFiles = {}
 
         @taskHistory = new TaskHistory {}, taskId: @options.taskId
         @taskHistory.fetch().done =>
@@ -22,6 +22,7 @@ class TaskView extends View
         return unless @taskHistory.attributes?.task?.id
 
         context =
+            request: @taskHistory.attributes.task.taskRequest.request
             taskHistory: @taskHistory.attributes
             taskFiles: _.pluck(@taskFiles.models, 'attributes').reverse()
 
@@ -31,6 +32,12 @@ class TaskView extends View
 
         @$el.html @template context, partials
 
+        @setupEvents()
+
         utils.setupSortableTables()
+
+    setupEvents: =>
+        @$el.find('[data-action="viewObjectJSON"]').unbind('click').click (event) ->
+            utils.viewJSON 'task', $(event.target).data('task-id')
 
 module.exports = TaskView

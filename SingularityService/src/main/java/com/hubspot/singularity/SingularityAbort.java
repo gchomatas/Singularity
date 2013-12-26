@@ -11,6 +11,7 @@ import ch.qos.logback.classic.LoggerContext;
 import com.google.common.io.Closeables;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.hubspot.singularity.smtp.SingularityMailer;
 
 public class SingularityAbort {
 
@@ -19,17 +20,21 @@ public class SingularityAbort {
   private final CuratorFramework curator;
   private final LeaderLatch leaderLatch;
   private final SingularityDriverManager driverManager;
-  private final SingularityStatePoller statePoller;
+  private final SingularityCloser closer;
+  private final SingularityMailer mailer;
   
   @Inject
-  public SingularityAbort(@Named(SingularityModule.UNDERLYING_CURATOR) CuratorFramework curator, LeaderLatch leaderLatch, SingularityDriverManager driverManager, SingularityStatePoller statePoller) {
+  public SingularityAbort(@Named(SingularityModule.UNDERLYING_CURATOR) CuratorFramework curator, LeaderLatch leaderLatch, SingularityDriverManager driverManager, SingularityCloser closer, SingularityMailer mailer) {
     this.curator = curator;
     this.leaderLatch = leaderLatch;
     this.driverManager = driverManager;
-    this.statePoller = statePoller;
+    this.closer = closer;
+    this.mailer = mailer;
   }
 
   public void abort() {
+    mailer.sendAbortMail();
+    
     stop();
     
     flushLogs();
@@ -42,7 +47,7 @@ public class SingularityAbort {
   }
 
   public void stop() {
-    stopStatePoller();
+    closeCloseables();
     
     closeDriver();
     
@@ -51,8 +56,8 @@ public class SingularityAbort {
     closeCurator();
   }
   
-  private void stopStatePoller() {
-    statePoller.stop();
+  private void closeCloseables() {
+    closer.closeAllCloseables();
   }
   
   private void closeDriver() {

@@ -4,6 +4,7 @@ constants =
     apiBase: 'singularity/v1'
 
     mesosLogsPort: '5051'
+    mesosLogsPortHttps: '5151'
 
     taskStates:
         TASK_RUNNING:
@@ -27,6 +28,10 @@ constants =
         TASK_LOST:
             isActive: false
             label: 'Lost'
+
+    requestCleanupType:
+        DELETING: 'Deleting'
+        PAUSING: 'Pausing'
 
     taskCleanupType:
         USER_REQUESTED:

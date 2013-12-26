@@ -15,7 +15,7 @@ class NavigationView extends View
 
     renderTitle: =>
         subtitle = utils.getHTMLTitleFromHistoryFragment(Backbone.history.fragment)
-        subtitle = ' — ' + subtitle if subtitle isnt ''
+        subtitle = ' — ' + subtitle if subtitle
         $('head title').text("Singularity#{ subtitle }")
 
     renderNavLinks: =>
@@ -23,16 +23,20 @@ class NavigationView extends View
 
         @renderTheme @theme
 
-        $anchors = $nav.find('ul.nav a:not(".dont-route")')
+        $anchors = $nav.find('ul.nav a[data-href]')
         $anchors.each ->
             route = $(@).data('href')
             $(@)
                 .attr('href', "/#{ constants.appName }/#{ route }")
-                .data('route', route)
+                .attr('data-route', route)
 
         $nav.find('li').removeClass('active')
+
+        currentTopLevel = "/#{ constants.appName }/#{ Backbone.history.fragment.split('/')[0] }"
+
         $anchors.each ->
-            $(@).parents('li').addClass('active') if $(@).attr('href') is "/#{ constants.appName }/#{ Backbone.history.fragment }"
+            if $(@).attr('href') in [currentTopLevel, currentTopLevel + 's']
+                $(@).parents('li').addClass('active')
 
     renderTheme: (theme) =>
         previousTheme = if @theme is 'light' then 'dark' else 'light'

@@ -3,27 +3,50 @@
 </header>
 
 <section>
-    <input type="search" placeholder="Filter tasks..." required />
     <div class="row-fluid">
         <div class="span12">
-            <table class="table" data-sortable>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Cleanup type</th>
-                        <th data-sortable="false"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#eachWithFn tasks}}
-                        <tr data-task-id="{{ id }}">
-                            <td><a title="{{ id }}" href="/singularity/task/{{ id }}" data-route="task/{{ id }}">{{#hardBreak name}}{{/hardBreak}}</a></td>
-                            <td>{{ cleanupTypeHuman }}</span></td>
-                            <td><a data-task-id="{{ id }}" class="dont-route view-json">JSON</a></td>
+            <ul class="nav nav-tabs">
+                <li>
+                    <a href="/singularity/tasks" data-route="tasks">Active</a>
+                </li>
+                <li>
+                    <a href="/singularity/tasks/scheduled" data-route="tasks/scheduled">Scheduled</a>
+                </li>
+                <li class="active">
+                    <a href="/singularity/tasks/cleaning" data-route="tasks/cleaning">Cleaning</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section>
+    <input type="search" placeholder="Filter tasks..." required />
+
+    <div class="row-fluid">
+        <div class="span12">
+            {{#if tasks.length}}
+                <table class="table" data-sortable>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Cleanup type</th>
+                            <th data-sortable="false"></th>
                         </tr>
-                    {{/eachWithFn}}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {{#eachWithFn tasks}}
+                            <tr data-task-id="{{ id }}">
+                                <td><a title="{{ id }}" href="/singularity/task/{{ id }}" data-route="task/{{ id }}">{{#hardBreak name}}{{/hardBreak}}</a></td>
+                                <td>{{ cleanupTypeHuman }}</span></td>
+                                <td><a data-task-id="{{ id }}" data-action="viewJSON">JSON</a></td>
+                            </tr>
+                        {{/eachWithFn}}
+                    </tbody>
+                </table>
+            {{else}}
+                <center><p>No cleaning tasks.</p></center>
+            {{/if}}
         </div>
     </div>
 </section>

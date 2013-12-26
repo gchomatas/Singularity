@@ -1,9 +1,9 @@
 package com.hubspot.singularity;
 
+import com.hubspot.mesos.Resources;
+
 import java.util.List;
 import java.util.Map;
-
-import com.hubspot.mesos.Resources;
 
 public class SingularityRequestBuilder {
 
@@ -28,10 +28,41 @@ public class SingularityRequestBuilder {
   private List<String> uris;
   private Object executorData;
 
+  private List<String> owners;
+  private Integer numRetriesOnFailure;
+  private Integer maxFailuresBeforePausing;
+  
   public SingularityRequest build() {
-    return new SingularityRequest(command, name, executor, resources, schedule, instances, daemon, env, uris, metadata, executorData, rackSensitive, id, version, timestamp);
+    return new SingularityRequest(command, name, executor, resources, schedule, instances, daemon, env, uris, metadata, executorData, rackSensitive, id, version, timestamp, owners, numRetriesOnFailure, maxFailuresBeforePausing);
   }
   
+  public Integer getMaxFailuresBeforePausing() {
+    return maxFailuresBeforePausing;
+  }
+
+  public SingularityRequestBuilder setMaxFailuresBeforePausing(Integer maxFailuresBeforePausing) {
+    this.maxFailuresBeforePausing = maxFailuresBeforePausing;
+    return this;
+  }
+
+  public List<String> getOwners() {
+    return owners;
+  }
+
+  public SingularityRequestBuilder setOwners(List<String> owners) {
+    this.owners = owners;
+    return this;
+  }
+
+  public Integer getNumRetriesOnFailure() {
+    return numRetriesOnFailure;
+  }
+
+  public SingularityRequestBuilder setNumRetriesOnFailure(Integer numRetriesOnFailure) {
+    this.numRetriesOnFailure = numRetriesOnFailure;
+    return this;
+  }
+
   public String getId() {
     return id;
   }
