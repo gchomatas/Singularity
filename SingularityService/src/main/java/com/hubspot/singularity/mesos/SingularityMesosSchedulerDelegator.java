@@ -43,7 +43,7 @@ public class SingularityMesosSchedulerDelegator implements Scheduler {
   private final List<Protos.TaskStatus> queuedUpdates;
   private final SingularityCleanupPoller cleanupPoller;
   
-  private Optional<Long> lastOfferTimestamp;
+  private Optional<Long> lastOfferTimestamp = Optional.absent();
   private MasterInfo master;
   
   @Inject
