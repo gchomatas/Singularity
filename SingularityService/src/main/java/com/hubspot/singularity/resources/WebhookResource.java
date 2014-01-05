@@ -40,7 +40,7 @@ public class WebhookResource {
  
   @DELETE
   @Path("/{hook}")
-  public void getHistoryForTask(@PathParam("hook") String hook) {
+  public void removeHook(@PathParam("hook") String hook) {
     webhookManager.removeHook(hook);
   }
 
