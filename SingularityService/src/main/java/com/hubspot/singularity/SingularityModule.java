@@ -22,6 +22,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
+import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Named;
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule;
@@ -33,6 +34,12 @@ import com.hubspot.singularity.config.ZooKeeperConfiguration;
 import com.hubspot.singularity.data.history.HistoryJDBI;
 import com.hubspot.singularity.data.history.HistoryManager;
 import com.hubspot.singularity.data.history.JDBIHistoryManager;
+import com.hubspot.singularity.hooks.WebhookManager;
+import com.hubspot.singularity.hooks.WebhookQueue;
+import com.hubspot.singularity.hooks.WebhookQueueConsumer;
+import com.hubspot.singularity.hooks.WebhookQueueFactory;
+import com.hubspot.singularity.hooks.WebhookSerializer;
+import com.hubspot.singularity.hooks.ZooKeeperQueue;
 import com.hubspot.singularity.mesos.SingularityLogSupport;
 import com.hubspot.singularity.smtp.SingularityMailer;
 
@@ -55,6 +62,14 @@ public class SingularityModule extends AbstractModule {
     bind(SingularityCloser.class).in(Scopes.SINGLETON);
     bind(SingularityMailer.class).in(Scopes.SINGLETON);
     bind(SingularityLogSupport.class).in(Scopes.SINGLETON);
+    
+    bind(WebhookManager.class).in(Scopes.SINGLETON);
+    bind(WebhookSerializer.class).in(Scopes.SINGLETON);
+    
+    install(new FactoryModuleBuilder()
+    .implement(WebhookQueue.class, ZooKeeperQueue.class)
+    .build(WebhookQueueFactory.class));
+    
     bindMethodInterceptorForStringTemplateClassLoaderWorkaround();
   }
   

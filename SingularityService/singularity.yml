@@ -6,7 +6,7 @@ server:
     port: 7000
 
 mesos:
-  master: zk://localhost:2181/mesos/sprocket
+  master: zk://localhost:2181/mesos
   defaultCpus: 1
   defaultMemory: 128
   frameworkName: Singularity

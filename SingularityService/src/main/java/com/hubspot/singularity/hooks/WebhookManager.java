@@ -2,78 +2,69 @@ package com.hubspot.singularity.hooks;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.hubspot.mesos.JavaUtils;
 import com.hubspot.singularity.SingularityTaskUpdate;
 import com.hubspot.singularity.data.CuratorManager;
-import com.hubspot.singularity.data.TaskManager;
-import com.ning.http.client.AsyncCompletionHandler;
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.Response;
 
 public class WebhookManager extends CuratorManager {
 
-  private final static Logger LOG = LoggerFactory.getLogger(TaskManager.class);
+  private final static Logger LOG = LoggerFactory.getLogger(WebhookManager.class);
 
   private static final String HOOK_ROOT_PATH = "/hooks";
-  private static final String HOOK_FORMAT_PATH = HOOK_ROOT_PATH + "/%s";
+  private static final String HOOK_PATH_FORMAT = HOOK_ROOT_PATH + "/%s";
   
-  private final ObjectMapper objectMapper;
-  
-  private final AsyncHttpClient asyncHttpClient;
-  private final AsyncCompletionHandler<Response> handler;
-  
-  // TODO watch/cache
-  // TODO one async htp client?
+  private WebhookQueueFactory webhookQueueFactory;
+  private Map<String, WebhookQueue> webhookQueues = Maps.newConcurrentMap();
   
   @Inject
-  public WebhookManager(CuratorFramework curator, ObjectMapper objectMapper) {
+  public WebhookManager(CuratorFramework curator, WebhookQueueFactory webhookQueueFactory) {
     super(curator);
     
-    this.objectMapper = objectMapper;
+    this.webhookQueueFactory = webhookQueueFactory;
     
-    asyncHttpClient = new AsyncHttpClient();
-    handler = new AsyncCompletionHandler<Response>() {
-
-      @Override
-      public Response onCompleted(Response response) throws Exception {
-        return response;
+    // Initialize hook queues for existing web hooks
+    try {
+      for (String webhook : getWebhooks()) {
+        final String webhookQueueName = JavaUtils.urlEncode(webhook);
+        WebhookQueue queue = webhookQueueFactory.create(webhookQueueName);
+        webhookQueues.put(webhookQueueName, queue);
       }
-
-      @Override
-      public void onThrowable(Throwable t) {
-        LOG.warn("Throwable while processing a webhook", t);
-      }
-    };
+    }
+    catch (Throwable t) {
+      Throwables.propagate(t);
+    }
+    
   }
   
   public void notify(SingularityTaskUpdate taskUpdate) {
-    for (String hook : getWebhooks()) {
-      LOG.trace(String.format("Sending a hook to %s with data about task %s", hook, taskUpdate.getTask().getTaskId()));
+    for (String hookURI : getWebhooks()) {
+      LOG.trace(String.format("Queuing task update job for hook '%s'. Task id is: %s, task status is: %s", hookURI, 
+          taskUpdate.getTask().getTaskId(), 
+          taskUpdate.getState().toString()));
       
       try {
-        asyncHttpClient.preparePost(hook)
-          .setBody(taskUpdate.getAsBytes(objectMapper))
-          .addHeader("Content-Type", "application/json")
-          .execute(handler);
+        final String webhookQueueName = JavaUtils.urlEncode(hookURI);
+    	  WebhookQueue queue = webhookQueues.get(webhookQueueName);
+    	  WebhookQueuedJob job = new WebhookQueuedJob(hookURI, taskUpdate);
+    	  queue.put(job);
       } catch (Exception e) {
-        LOG.warn("Exception while preparing hook: " + hook, e);
+        LOG.warn("Exception while preparing to queue task update job for hook: " + hookURI, e);
       }
     }
   }
   
-  private String getHookPath(String uri) {
-    return String.format(HOOK_FORMAT_PATH, JavaUtils.urlEncode(uri));
-  }
+  
   
   public List<String> getWebhooks() {
     return loadHooks();
@@ -96,15 +87,47 @@ public class WebhookManager extends CuratorManager {
   }
   
   public void addHook(String uri) {
-    final String path = getHookPath(uri);
-    
-    create(path);
+    try {
+      final String path = getHookPath(uri);
+      if (!exists(path)) {
+        create(path);
+        final String webhookQueueName = JavaUtils.urlEncode(uri);
+        WebhookQueue queue = webhookQueueFactory.create(webhookQueueName);
+        webhookQueues.put(webhookQueueName, queue);
+      }
+      else {
+        LOG.warn(String.format("Web hook: '%s' already exists", uri));
+      }
+    }
+    catch (Exception e) {
+      LOG.warn(String.format("Failed to add web hook: %s", uri), e);
+      Throwables.propagate(e);
+    }
   }
   
   public void removeHook(String uri) {
-    final String path = getHookPath(uri);
+    try {
+      final String path = getHookPath(uri);
+      if (exists(path)) {
+        delete(path);
+      
+        final String webhookQueueName = JavaUtils.urlEncode(uri);
+        WebhookQueue queue = webhookQueues.get(webhookQueueName);
+        queue.close();
+        webhookQueues.remove(webhookQueueName);
+      }
+      else {
+        LOG.warn(String.format("Web hook: '%s' does not exists", uri));
+      }
+    }
+    catch (Exception e) {
+      LOG.warn(String.format("Failed to add web hook: %s", uri), e);
+      Throwables.propagate(e);
+    }
+  }
   
-    delete(path);
+  private String getHookPath(String uri) {
+    return String.format(HOOK_PATH_FORMAT, JavaUtils.urlEncode(uri));  
   }
   
 }
