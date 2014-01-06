@@ -90,8 +90,8 @@ public class WebhookQueueConsumer implements QueueConsumer<WebhookQueuedJob> {
     catch (Throwable t) {
       int failures = webhookRequestFailures.incrementAndGet();
       int retryDelayInMs = getRetryDelayInMs(failures);
-      LOG.warn(String.format("Web hook: '%s' is unavailable. Number of failures so far is: '%d'. We will wait for: '%d' seconds and then will requeue the task update job for task: '%s'.",
-          job.getHookURI(), failures, (retryDelayInMs / 1000), job.getTaskUpdate().getState().toString()));
+      LOG.warn(String.format("Web hook: '%s' is unavailable. Number of failures so far is: '%d'. We will wait for: '%d' seconds and then will requeue the task update job for task: '%s - %s'.",
+          job.getHookURI(), failures, (retryDelayInMs / 1000), job.getTaskUpdate().getTask().getTaskId(), job.getTaskUpdate().getState().toString()));
       
       Thread.sleep(retryDelayInMs, 0);
       

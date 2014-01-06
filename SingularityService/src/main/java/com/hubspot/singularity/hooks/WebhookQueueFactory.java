@@ -1,7 +1,9 @@
 package com.hubspot.singularity.hooks;
 
+import com.google.inject.name.Named;
+
 public interface WebhookQueueFactory {
   
-  WebhookQueue create(String queueName);
-  
+  @Named("DistributedQueue") WebhookQueue createDistributedQueue(String queueName);
+  @Named("DistributedPriorityQueue") WebhookQueue createDistributedPriorityQueue(String queueName);
 }

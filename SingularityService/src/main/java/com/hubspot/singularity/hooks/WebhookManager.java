@@ -37,7 +37,7 @@ public class WebhookManager extends CuratorManager {
     try {
       for (String webhook : getWebhooks()) {
         final String webhookQueueName = JavaUtils.urlEncode(webhook);
-        WebhookQueue queue = webhookQueueFactory.create(webhookQueueName);
+        WebhookQueue queue = webhookQueueFactory.createDistributedPriorityQueue(webhookQueueName);
         webhookQueues.put(webhookQueueName, queue);
       }
     }
@@ -92,7 +92,7 @@ public class WebhookManager extends CuratorManager {
       if (!exists(path)) {
         create(path);
         final String webhookQueueName = JavaUtils.urlEncode(uri);
-        WebhookQueue queue = webhookQueueFactory.create(webhookQueueName);
+        WebhookQueue queue = webhookQueueFactory.createDistributedPriorityQueue(webhookQueueName);
         webhookQueues.put(webhookQueueName, queue);
       }
       else {
