@@ -3,23 +3,11 @@ package com.hubspot.singularity.hooks;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.recipes.queue.DistributedQueue;
 import org.apache.curator.framework.recipes.queue.QueueBuilder;
-import org.apache.mesos.Protos.Offer;
-import org.apache.mesos.Protos.TaskInfo;
-import org.apache.mesos.Protos.TaskState;
 
 import com.google.common.base.Throwables;
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
-import com.hubspot.mesos.Resources;
-import com.hubspot.singularity.SingularityPendingRequestId.PendingType;
 import com.hubspot.singularity.data.CuratorManager;
-import com.hubspot.singularity.SingularityPendingTaskId;
-import com.hubspot.singularity.SingularityRequest;
-import com.hubspot.singularity.SingularityRequestBuilder;
-import com.hubspot.singularity.SingularityTask;
-import com.hubspot.singularity.SingularityTaskId;
-import com.hubspot.singularity.SingularityTaskRequest;
-import com.hubspot.singularity.SingularityTaskUpdate;
 
 public class ZooKeeperQueue extends CuratorManager implements WebhookQueue {
   
