@@ -9,7 +9,7 @@ import com.google.inject.Inject;
 
 public class WebhookSerializer implements QueueSerializer<WebhookQueuedJob> {
 	
-	ObjectMapper objectMapper;
+  ObjectMapper objectMapper;
 	
   @Inject
   public WebhookSerializer(ObjectMapper objectMapper) {
