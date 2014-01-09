@@ -25,7 +25,6 @@ import com.google.inject.Singleton;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.name.Named;
-import com.google.inject.name.Names;
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule;
 import com.hubspot.mesos.JavaUtils;
 import com.hubspot.singularity.config.MesosConfiguration;
@@ -36,11 +35,8 @@ import com.hubspot.singularity.data.history.HistoryJDBI;
 import com.hubspot.singularity.data.history.HistoryManager;
 import com.hubspot.singularity.data.history.JDBIHistoryManager;
 import com.hubspot.singularity.hooks.WebhookManager;
-import com.hubspot.singularity.hooks.WebhookQueue;
 import com.hubspot.singularity.hooks.WebhookQueueFactory;
 import com.hubspot.singularity.hooks.WebhookSerializer;
-import com.hubspot.singularity.hooks.ZooKeeperPriorityQueue;
-import com.hubspot.singularity.hooks.ZooKeeperQueue;
 import com.hubspot.singularity.mesos.SingularityLogSupport;
 import com.hubspot.singularity.smtp.SingularityMailer;
 
@@ -67,10 +63,7 @@ public class SingularityModule extends AbstractModule {
     bind(WebhookManager.class).in(Scopes.SINGLETON);
     bind(WebhookSerializer.class).in(Scopes.SINGLETON);
     
-    install(new FactoryModuleBuilder()
-    .implement(WebhookQueue.class, Names.named("DistributedQueue"), ZooKeeperQueue.class)
-    .implement(WebhookQueue.class, Names.named("DistributedPriorityQueue"), ZooKeeperPriorityQueue.class)
-    .build(WebhookQueueFactory.class));
+    install(new FactoryModuleBuilder().build(WebhookQueueFactory.class));
     
     bindMethodInterceptorForStringTemplateClassLoaderWorkaround();
   }

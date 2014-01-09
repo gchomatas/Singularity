@@ -23,53 +23,49 @@ public class WebhookManager extends CuratorManager {
 
   private static final String HOOK_ROOT_PATH = "/hooks";
   private static final String HOOK_PATH_FORMAT = HOOK_ROOT_PATH + "/%s";
-  
+
   private WebhookQueueFactory webhookQueueFactory;
-  private Map<String, WebhookQueue> webhookQueues = Maps.newConcurrentMap();
-  
+  private Map<String, ZooKeeperPriorityQueue> webhookQueues = Maps.newConcurrentMap();
+
   @Inject
   public WebhookManager(CuratorFramework curator, WebhookQueueFactory webhookQueueFactory) {
     super(curator);
-    
+
     this.webhookQueueFactory = webhookQueueFactory;
-    
+
     // Initialize hook queues for existing web hooks
     try {
       for (String webhook : getWebhooks()) {
         final String webhookQueueName = JavaUtils.urlEncode(webhook);
-        WebhookQueue queue = webhookQueueFactory.createDistributedPriorityQueue(webhookQueueName);
+        ZooKeeperPriorityQueue queue = webhookQueueFactory.createDistributedPriorityQueue(webhookQueueName);
         webhookQueues.put(webhookQueueName, queue);
       }
-    }
-    catch (Throwable t) {
+    } catch (Throwable t) {
       Throwables.propagate(t);
     }
-    
+
   }
-  
+
   public void notify(SingularityTaskUpdate taskUpdate) {
     for (String hookURI : getWebhooks()) {
-      LOG.trace(String.format("Queuing task update job for hook '%s'. Task id is: %s, task status is: %s", hookURI, 
-          taskUpdate.getTask().getTaskId(), 
-          taskUpdate.getState().toString()));
-      
+      LOG.trace(String.format("Queuing task update job for hook '%s'. Task id is: %s, task status is: %s", 
+          hookURI, taskUpdate.getTask().getTaskId(), taskUpdate.getState().toString()));
+
       try {
         final String webhookQueueName = JavaUtils.urlEncode(hookURI);
-    	  WebhookQueue queue = webhookQueues.get(webhookQueueName);
-    	  WebhookQueuedJob job = new WebhookQueuedJob(hookURI, taskUpdate);
-    	  queue.put(job);
+        ZooKeeperPriorityQueue queue = webhookQueues.get(webhookQueueName);
+        WebhookQueuedJob job = new WebhookQueuedJob(hookURI, taskUpdate);
+        queue.put(job);
       } catch (Exception e) {
-        LOG.warn("Exception while preparing to queue task update job for hook: " + hookURI, e);
+        LOG.warn(String.format("Exception while preparing to queue task update job for hook: %s", hookURI), e);
       }
     }
   }
-  
-  
-  
+
   public List<String> getWebhooks() {
     return loadHooks();
   }
-  
+
   private List<String> loadHooks() {
     try {
       final List<String> hooks = curator.getChildren().forPath(HOOK_ROOT_PATH);
@@ -85,49 +81,45 @@ public class WebhookManager extends CuratorManager {
       throw Throwables.propagate(e);
     }
   }
-  
+
   public void addHook(String uri) {
     try {
       final String path = getHookPath(uri);
       if (!exists(path)) {
         create(path);
         final String webhookQueueName = JavaUtils.urlEncode(uri);
-        WebhookQueue queue = webhookQueueFactory.createDistributedPriorityQueue(webhookQueueName);
+        ZooKeeperPriorityQueue queue = webhookQueueFactory.createDistributedPriorityQueue(webhookQueueName);
         webhookQueues.put(webhookQueueName, queue);
-      }
-      else {
+      } else {
         LOG.warn(String.format("Web hook: '%s' already exists", uri));
       }
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       LOG.warn(String.format("Failed to add web hook: %s", uri), e);
       Throwables.propagate(e);
     }
   }
-  
+
   public void removeHook(String uri) {
     try {
       final String path = getHookPath(uri);
       if (exists(path)) {
         delete(path);
-      
+
         final String webhookQueueName = JavaUtils.urlEncode(uri);
-        WebhookQueue queue = webhookQueues.get(webhookQueueName);
+        ZooKeeperPriorityQueue queue = webhookQueues.get(webhookQueueName);
         queue.close();
         webhookQueues.remove(webhookQueueName);
-      }
-      else {
+      } else {
         LOG.warn(String.format("Web hook: '%s' does not exists", uri));
       }
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       LOG.warn(String.format("Failed to add web hook: %s", uri), e);
       Throwables.propagate(e);
     }
   }
-  
+
   private String getHookPath(String uri) {
-    return String.format(HOOK_PATH_FORMAT, JavaUtils.urlEncode(uri));  
+    return String.format(HOOK_PATH_FORMAT, JavaUtils.urlEncode(uri));
   }
-  
+
 }

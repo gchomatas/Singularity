@@ -8,9 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 
 public class WebhookSerializer implements QueueSerializer<WebhookQueuedJob> {
-	
+
   ObjectMapper objectMapper;
-	
+
   @Inject
   public WebhookSerializer(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
@@ -19,8 +19,7 @@ public class WebhookSerializer implements QueueSerializer<WebhookQueuedJob> {
   public WebhookQueuedJob deserialize(byte[] buffer) {
     try {
       return WebhookQueuedJob.fromBytes(buffer, objectMapper);
-    } 
-    catch (IOException e) {
+    } catch (IOException e) {
       e.printStackTrace();
       return null;
     }
