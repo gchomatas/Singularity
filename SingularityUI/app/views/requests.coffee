@@ -7,28 +7,52 @@ class RequestsView extends View
     templateRequestsPending: require './templates/requestsPending'
     templateRequestsCleaning: require './templates/requestsCleaning'
 
-    render: (requestsFilter) =>
-        return unless requestsFilter
+    initialize: ->
+        @lastRequestsFilter = @options.requestsFilter
 
-        if requestsFilter is 'active'
+    fetch: ->
+        if @lastRequestsFilter is 'active'
+            @collection = app.collections.requestsActive
+
+        if @lastRequestsFilter is 'paused'
+            @collection = app.collections.requestsPaused
+
+        if @lastRequestsFilter is 'pending'
+            @collection = app.collections.requestsPending
+
+        if @lastRequestsFilter is 'cleaning'
+            @collection = app.collections.requestsCleaning
+
+        @collection.fetch()
+
+    refresh: ->
+        return if @$el.find('input[type="search"]').val() isnt ''
+
+        @fetch(@lastRequestsFilter).done =>
+            @render(@lastRequestsFilter, refresh = true)
+
+    render: (requestsFilter, refresh) =>
+        @lastRequestsFilter = requestsFilter
+
+        if @lastRequestsFilter is 'active'
             @collection = app.collections.requestsActive
             template = @templateRequestsActive
 
-        if requestsFilter is 'paused'
+        if @lastRequestsFilter is 'paused'
             @collection = app.collections.requestsPaused
             template = @templateRequestsPaused
 
-        if requestsFilter is 'pending'
+        if @lastRequestsFilter is 'pending'
             @collection = app.collections.requestsPending
             template = @templateRequestsPending
 
-        if requestsFilter is 'cleaning'
+        if @lastRequestsFilter is 'cleaning'
             @collection = app.collections.requestsCleaning
             template = @templateRequestsCleaning
 
         context = {}
 
-        if requestsFilter in ['active', 'paused']
+        if @lastRequestsFilter in ['active', 'paused']
             context.requests = _.filter(_.pluck(@collection.models, 'attributes'), (r) => not r.scheduled)
             context.requestsScheduled = _.filter(_.pluck(@collection.models, 'attributes'), (r) => r.scheduled)
             context.requests.reverse()
@@ -37,20 +61,27 @@ class RequestsView extends View
         else
             context.requests = _.pluck(@collection.models, 'attributes')
 
+        # Intersect starred requests before rendering
+        for request in context.requests
+            if app.collections.requestsStarred.get(request.id)?
+                request.starred = true
+
         @$el.html template context
 
         @setupEvents()
-        @setUpSearchEvents()
+        @setUpSearchEvents(refresh)
         utils.setupSortableTables()
 
+        @
+
     setupEvents: ->
-        @$el.find('[data-action="viewJSON"]').unbind('click').click (event) ->
-            utils.viewJSON 'request', $(event.target).data('request-id')
+        @$el.find('[data-action="viewJSON"]').unbind('click').on 'click', (e) ->
+            utils.viewJSON 'request', $(e.target).data('request-id')
 
         $removeLinks = @$el.find('[data-action="remove"]')
 
         $removeLinks.unbind('click').on 'click', (e) =>
-            row = $(e.target).parents('tr')
+            $row = $(e.target).parents('tr')
             requestModel = @collection.get($(e.target).data('request-id'))
 
             vex.dialog.confirm
@@ -60,42 +91,59 @@ class RequestsView extends View
                     requestModel.destroy()
                     delete app.allRequests[requestModel.get('id')] # TODO - move to model on destroy?
                     @collection.remove(requestModel)
-                    row.remove()
+                    $row.remove()
 
         $deletePausedLinks = @$el.find('[data-action="deletePaused"]')
 
         $deletePausedLinks.unbind('click').on 'click', (e) =>
-            row = $(e.target).parents('tr')
+            $row = $(e.target).parents('tr')
             requestModel = @collection.get($(e.target).data('request-id'))
 
             vex.dialog.confirm
                 message: "<p>Are you sure you want to delete the paused request:</p><pre>#{ requestModel.get('id') }</pre>"
                 callback: (confirmed) =>
                     return unless confirmed
-                    row.remove()
+                    $row.remove()
                     requestModel.deletePaused().done =>
                         delete app.allRequests[requestModel.get('id')]
                         @collection.remove(requestModel)
 
         $unpauseLinks = @$el.find('[data-action="unpause"]')
 
-        $unpauseLinks .unbind('click').on 'click', (e) =>
-            row = $(e.target).parents('tr')
+        $unpauseLinks.unbind('click').on 'click', (e) =>
+            $row = $(e.target).parents('tr')
             requestModel = @collection.get($(e.target).data('request-id'))
 
             vex.dialog.confirm
                 message: "<p>Are you sure you want to delete the paused request:</p><pre>#{ requestModel.get('id') }</pre>"
                 callback: (confirmed) =>
                     return unless confirmed
-                    row.remove()
+                    $row.remove()
                     requestModel.unpause().done =>
                         @render()
 
-    setUpSearchEvents: =>
-        $search = @$el.find('input[type="search"]')
-        $search.focus() if $(window).width() > 568
+        $starLinks = @$el.find('[data-action="starToggle"]')
 
-        $rows = @$el.find('tbody > tr')
+        $starLinks.unbind('click').on 'click', (e) =>
+            $target = $(e.target)
+
+            requestId = $target.data('request-id')
+            starred = $target.attr('data-starred') is 'true'
+
+            app.collections.requestsStarred.toggle(requestId)
+
+            if starred
+                $target.attr('data-starred', 'false')
+            else
+                $target.attr('data-starred', 'true')
+
+    setUpSearchEvents: (refresh) ->
+        $search = @$el.find('input[type="search"]')
+
+        if not app.isMobile and not refresh
+            $search.focus()
+
+        $rows = @$('tbody > tr')
 
         lastText = _.trim $search.val()
 

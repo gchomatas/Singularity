@@ -5,6 +5,42 @@
 
 <section>
     <div class="page-header">
+        <h1>History</h1>
+    </div>
+    {{#if requestHistory.requestUpdates}}
+        <div class="row-fluid">
+            <div class="span12">
+                <table class="table" data-sortable>
+                    <thead>
+                        <tr>
+                            <th>State</th>
+                            <th>User</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#eachWithFn requestHistory.requestUpdates}}
+                            <tr>
+                                <td><span title="{{ state }}">{{ stateHuman }}</span></td>
+                                <td><span title="{{ user }}">{{ userHuman }}</span></td>
+                                <td data-value="{{ createdAt }}"><span title="{{ createdAt }}">{{ createdAtHuman }}</span></td>
+                            </tr>
+                        {{/eachWithFn}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {{else}}
+        {{#if fetchDoneHistory}}
+            <center><p>No request history.</p></center>
+        {{else}}
+            <div class="page-loader centered"></div>
+        {{/if}}
+    {{/if}}
+</section>
+
+<section>
+    <div class="page-header">
         <h1>Active Tasks</h1>
     </div>
     {{#if requestTasksActive}}
@@ -23,13 +59,12 @@
                     <tbody>
                         {{#eachWithFn requestTasksActive}}
                             <tr data-task-id="{{ id }}">
-                                <td><span title="{{ id }}"><a href="/singularity/task/{{ id }}" data-route="task/{{ id }}">{{#hardBreak name}}{{/hardBreak}}</a></span></td>
+                                <td><span title="{{ id }}"><a href="/singularity/task/{{ id }}" data-route="task/{{ id }}">{{#getShortTaskIDMiddleEllipsis name}}{{/getShortTaskIDMiddleEllipsis}}</a></span></td>
                                 <td>{{ lastStatusHuman }}</td>
                                 <td data-value="{{ createdAt }}">{{ createdAtHuman }}</td>
                                 <td data-value="{{ updatedAt }}">{{ updatedAtHuman }}</td>
-                                <td>
+                                <td class="actions-column">
                                     <a data-task-id="{{ id }}" data-action="viewJSON">JSON</a>
-                                    &nbsp;&nbsp;
                                     <a href="/singularity/task/{{ id }}/files/" data-route="/task/{{ id }}/files/">Files</a>
                                 </td>
                             </tr>
@@ -67,7 +102,10 @@
                             <tr data-task-id="{{ id }}">
                                 <td><span title="{{ id }}">{{#hardBreak name}}{{/hardBreak}}</span></td>
                                 <td data-value="{{ nextRunAt }}"><span title="{{ nextRunAt }}">{{ nextRunAtHuman }}</span></td>
-                                <td><a data-task-id="{{ id }}" data-action="viewJSON">JSON</a></td>
+                                <td class="actions-column">
+                                    <a data-task-id="{{ id }}" data-action="viewJSON">JSON</a>
+                                    <a data-task-id="{{ id }}" data-action="run-now">Run now</a>
+                                </td>
                             </tr>
                         {{/eachWithFn}}
                     </tbody>

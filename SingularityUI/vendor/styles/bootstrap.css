@@ -662,7 +662,6 @@ pre {
   padding: 0 3px 2px;
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 12px;
-  color: #333333;
   -webkit-border-radius: 3px;
      -moz-border-radius: 3px;
           border-radius: 3px;
@@ -670,9 +669,6 @@ pre {
 
 code {
   padding: 2px 4px;
-  color: #d14;
-  background-color: #f7f7f9;
-  border: 1px solid #e1e1e8;
 }
 
 pre {
@@ -3274,6 +3270,14 @@ input[type="submit"].btn.btn-mini {
   line-height: 14px;
 }
 
+@media (max-width: 568px) {
+  .nav-tabs > li > a,
+  .nav-pills > li > a {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+}
+
 .nav-tabs {
   border-bottom: 1px solid #ddd;
 }
@@ -3789,7 +3793,7 @@ input[type="submit"].btn.btn-mini {
 .navbar .nav .active > a:hover {
   color: #ffffff;
   text-decoration: none;
-  background-color: #222222;
+  background-color: #444;
 }
 
 .navbar .divider-vertical {
@@ -3939,31 +3943,26 @@ input[type="submit"].btn.btn-mini {
 }
 
 .breadcrumb {
-  padding: 7px 14px;
+  padding: 14px;
   margin: 0 0 18px;
   list-style: none;
-  background-color: #fbfbfb;
-  background-image: -moz-linear-gradient(top, #ffffff, #f5f5f5);
-  background-image: -ms-linear-gradient(top, #ffffff, #f5f5f5);
-  background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#f5f5f5));
-  background-image: -webkit-linear-gradient(top, #ffffff, #f5f5f5);
-  background-image: -o-linear-gradient(top, #ffffff, #f5f5f5);
-  background-image: linear-gradient(top, #ffffff, #f5f5f5);
+  background-color: #f6f6f6;
   background-repeat: repeat-x;
-  border: 1px solid #ddd;
   -webkit-border-radius: 3px;
      -moz-border-radius: 3px;
           border-radius: 3px;
-  filter: progid:dximagetransform.microsoft.gradient(startColorstr='#ffffff', endColorstr='#f5f5f5', GradientType=0);
-  -webkit-box-shadow: inset 0 1px 0 #ffffff;
-     -moz-box-shadow: inset 0 1px 0 #ffffff;
-          box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .breadcrumb li {
   display: inline-block;
   *display: inline;
   *zoom: 1;
+}
+
+.breadcrumb>li+li:before {
+  padding: 0 5px;
+  color: #CCC;
+  content: "/\00a0";
 }
 
 .breadcrumb .divider {

@@ -1,56 +1,31 @@
 # Singularity
 
-Scheduler for running mesos tasks - long running processes, one-off tasks, and scheduled jobs.
+Scheduler for running [mesos](http://mesos.apache.org/) tasks - long running processes, one-off tasks, and scheduled jobs.
 
-## MVN Deployment process
+## Overview
 
-Prereqs
-- sonatype server passwords in ~/.m2/settings.xml for mvn deploy (otherwise, 401)
-- access to the sonatype user/password when browsing to the web ui
-- gpg installed, key generated and shipped, and passphrase available 
+Singularity is a scheduler for running long running tasks and scheduled tasks inside of Mesos. You make a Request to Singularity to define the task(s) (which is a scheduled job or long running process) that the Mesos executor should execute and the metadata about how to run these tasks - the # of task instances, the resources (cpus, memory) each task should consume, and optionally a cron schedule, as well as other configuration options. Singularity registers with a Mesos master and receives resource offers from Mesos and attempts to match those offers (which include resources as well as rack information and what else is running on that Slave) with its list of Requests that have yet to be fulfilled. Once an offer is accepted by Singularity, a task is launched inside of Mesos on the Slave which the offer referenced.
 
-Steps
-- Increment all pom versions
-- mvn deploy
-- In https://oss.sonatype.org/index.html#stagingRepositories, find the release and close it.
-- If close succeeds, Release. 
+[Overview, Features, and Design](overview.md)
 
-## Database
+## Requirements
 
-### Configuration
+- Mesos
+- ZooKeeper
+- MySQL
 
-The `database` section of the Singularity configuration file must be populated in order for Singularity to persist task history information. Here's an example:
+## Installation & Deployment
 
-```
-database:
-  driverClass: com.mysql.jdbc.Driver
-  user: USERNAME
-  password: PASSWORD
-  url: jdbc:mysql://HOSTNAME:3306/DB_NAME
-```
+- [Database configuration and schema](database.md)
+- Singularity configuration
 
-### Schema changes
+## Operation & Documentation
 
-Singularity uses the [dropwizard-migrations](http://dropwizard.codahale.com/manual/migrations/) bundle (which in turn uses [liquibase](http://www.liquibase.org/)) for managing and applying database schema changes.
+- [API Endpoints](SingularityService/api.md)
+- [API Objects](SingularityService/objects.md)
+- Suggested practices (monitoring & HA)
 
-To check the status of your database, run the `db status` task:
+## Developer Info
 
-```
-java -jar SingularityService/target/SingularityService-0.2.13.jar db status ./config.yaml --migrations SingularityService/src/main/resources/migrations.yaml
-INFO  [2013-12-23 18:41:33,620] liquibase: Reading from singularity11.DATABASECHANGELOG
-INFO  [2013-12-23 18:41:33,668] liquibase: Reading from singularity11.DATABASECHANGELOG
-2 change sets have not been applied to root@localhost@jdbc:mysql://localhost:3306/singularity11
-```
-
-To apply pending migrations, run the `db migrate` task:
-
-```
-java -jar SingularityService/target/SingularityService-0.2.13.jar db migrate ./config.yaml --migrations SingularityService/src/main/resources/migrations.yaml
-INFO  [2013-12-23 18:42:08,469] liquibase: Successfully acquired change log lock
-INFO  [2013-12-23 18:42:10,206] liquibase: Creating database history table with name: singularity11.DATABASECHANGELOG
-INFO  [2013-12-23 18:42:10,237] liquibase: Reading from singularity11.DATABASECHANGELOG
-INFO  [2013-12-23 18:42:10,239] liquibase: Reading from singularity11.DATABASECHANGELOG
-INFO  [2013-12-23 18:42:10,327] liquibase: ChangeSet SingularityService/src/main/resources/migrations.yaml::1::tpetr ran successfully in 57ms
-```
-
-More information about `db` tasks can be found in the dropwizard-migrations [docs](http://dropwizard.codahale.com/manual/migrations/), and more information about the migration file syntax can be found in the liquibase [docs](http://www.liquibase.org/documentation/yaml_format.html).
+- [Scheduled Execution](scheduled.md)
+- [Maven deployment](maven.md)

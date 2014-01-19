@@ -1,7 +1,8 @@
 View = require './view'
 
-RequestTasks = require '../collections/RequestTasks'
+RequestHistory = require '../models/RequestHistory'
 
+RequestTasks = require '../collections/RequestTasks'
 HistoricalTasks = require '../collections/HistoricalTasks'
 
 class RequestView extends View
@@ -10,6 +11,11 @@ class RequestView extends View
 
     initialize: =>
         @request = app.allRequests[@options.requestId]
+
+        @requestHistory = new RequestHistory {}, requestId: @options.requestId
+        @requestHistory.fetch().done =>
+            @requestHistory.fetched = true
+            @render()
 
         @requestTasksActive = new RequestTasks [], { requestId: @options.requestId, active: true }
         @requestTasksActive.fetch().done =>
@@ -23,6 +29,9 @@ class RequestView extends View
 
         context =
             request: @request
+
+            fetchDoneHistory: @requestHistory.fetched
+            requestHistory: @requestHistory.attributes
 
             fetchDoneActive: @requestTasksActive.fetched
             requestTasksActive: _.pluck(@requestTasksActive.models, 'attributes')
@@ -83,12 +92,12 @@ class RequestView extends View
                     compile: Handlebars.compile
                     collection: @historicalTasks
                     pagination: true
-                    table_class: 'table'
+                    table_class: 'table teeble-table'
                     subviews: $.extend {}, @subviews,
                         pagination: HistoryPaginationView
                     partials: [
                         header: '<th class="sorting" data-sort="taskId">Name</th>'
-                        cell: '<td><span title="{{ id }}"><a href="/singularity/task/{{ id }}" data-route="task/{{ id }}">{{#hardBreak name}}{{/hardBreak}}</a></span></td>'
+                        cell: '<td><span title="{{ id }}"><a href="/singularity/task/{{ id }}" data-route="task/{{ id }}">{{#getShortTaskIDMiddleEllipsis name}}{{/getShortTaskIDMiddleEllipsis}}</a></span></td>'
                     ,
                         header: '<th class="sorting" data-sort="lastTaskStatus">Status</th>'
                         cell: '<td>{{ lastStatusHuman }}</td>'
@@ -101,26 +110,49 @@ class RequestView extends View
                     ,
                         header: '<th>&nbsp;</th>'
                         cell: '''
-                            <td>
+                            <td class="actions-column">
                                 <a data-task-id="{{ id }}" data-action="viewJSON">JSON</a>
-                                &nbsp;&nbsp;
                                 <a href="/singularity/task/{{ id }}/files/" data-route="/task/{{ id }}/files/">Files</a>
                             </td>
                         '''
                     ]
 
                 @historicalTasksView.setElement $('.historical-tasks-paginated')[0]
-                @historicalTasksView.render()
 
-                @historicalTasks.on 'sync', => @historicalTasksView.render()
+                @historicalTasksView.render()
+                @postHistoricalTasksViewRender()
+
+                @historicalTasks.on 'sync', =>
+                    @historicalTasksView.render()
+                    @postHistoricalTasksViewRender()
 
                 @setupEvents()
 
-    setupEvents: ->
-        @$el.find('[data-action="viewJSON"]').unbind('click').click (event) ->
-            utils.viewJSON 'task', $(event.target).data('task-id')
+    postHistoricalTasksViewRender: ->
+        $teebleOuter = $(@historicalTasksView.el)
+        $empty = $teebleOuter.find('.teeble_empty')
+        if $empty.length
+            $teebleOuter.html('<center><p>No historical tasks.</p></center>')
 
-        @$el.find('[data-action="viewObjectJSON"]').unbind('click').click (event) ->
-            utils.viewJSON 'request', $(event.target).data('request-id')
+    setupEvents: ->
+        @$el.find('[data-action="viewJSON"]').unbind('click').on 'click', (e) ->
+            utils.viewJSON 'task', $(e.target).data('task-id')
+
+        @$el.find('[data-action="viewObjectJSON"]').unbind('click').on 'click', (e) ->
+            utils.viewJSON 'request', $(e.target).data('request-id')
+
+        $runNowLinks = @$el.find('[data-action="run-now"]')
+
+        $runNowLinks.unbind('click').on 'click', (e) =>
+            taskModel = app.collections.tasksScheduled.get($(e.target).data('task-id'))
+            $row = $(e.target).parents('tr')
+
+            vex.dialog.confirm
+                message: "<p>Are you sure you want to run this task immediately:</p><pre>#{ taskModel.get('id') }</pre>"
+                callback: (confirmed) =>
+                    return unless confirmed
+                    taskModel.run()
+                    app.collections.tasksScheduled.remove(taskModel)
+                    $row.remove()
 
 module.exports = RequestView

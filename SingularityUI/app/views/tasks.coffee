@@ -6,22 +6,47 @@ class TasksView extends View
     templateTasksScheduled: require './templates/tasksScheduled'
     templateTasksCleaning: require './templates/tasksCleaning'
 
-    render: (tasksFilter) =>
-        if tasksFilter is 'active'
+    killTaskTemplate: require './templates/vex/killTask'
+
+    initialize: ->
+        @lastTasksFilter = @options.tasksFilter
+
+    fetch: ->
+        if @lastTasksFilter is 'active'
+            @collection = app.collections.tasksActive
+
+        if @lastTasksFilter is 'scheduled'
+            @collection = app.collections.tasksScheduled
+
+        if @lastTasksFilter is 'cleaning'
+            @collection = app.collections.tasksCleaning
+
+        @collection.fetch()
+
+    refresh: ->
+        return if @$el.find('input[type="search"]').val() isnt ''
+
+        @fetch(@lastTasksFilter).done =>
+            @render(@lastTasksFilter, refresh = true)
+
+    render: (tasksFilter, refresh) ->
+        @lastTasksFilter = tasksFilter
+
+        if @lastTasksFilter is 'active'
             @collection = app.collections.tasksActive
             template = @templateTasksActive
 
-        if tasksFilter is 'scheduled'
+        if @lastTasksFilter is 'scheduled'
             @collection = app.collections.tasksScheduled
             template = @templateTasksScheduled
 
-        if tasksFilter is 'cleaning'
+        if @lastTasksFilter is 'cleaning'
             @collection = app.collections.tasksCleaning
             template = @templateTasksCleaning
 
         tasks = _.pluck(@collection.sort().models, 'attributes')
 
-        if tasksFilter is 'active'
+        if @lastTasksFilter is 'active'
             tasks = tasks.reverse()
 
         context =
@@ -30,33 +55,35 @@ class TasksView extends View
         @$el.html template context
 
         @setupEvents()
-        @setUpSearchEvents()
+        @setUpSearchEvents(refresh)
         utils.setupSortableTables()
 
+        @
+
     setupEvents: ->
-        @$el.find('[data-action="viewJSON"]').unbind('click').click (event) ->
-            utils.viewJSON 'task', $(event.target).data('task-id')
+        @$el.find('[data-action="viewJSON"]').unbind('click').on 'click', (e) ->
+            utils.viewJSON 'task', $(e.target).data('task-id')
 
         $removeLinks = @$el.find('[data-action="remove"]')
 
         $removeLinks.unbind('click').on 'click', (e) =>
-            row = $(e.target).parents('tr')
+            $row = $(e.target).parents('tr')
             taskModel = @collection.get($(e.target).data('task-id'))
 
             vex.dialog.confirm
-                message: "<p>Are you sure you want to delete the task:</p><pre>#{ taskModel.get('id') }</pre>"
+                message: @killTaskTemplate(taskId: taskModel.get('id'))
                 callback: (confirmed) =>
                     return unless confirmed
                     taskModel.destroy()
                     delete app.allTasks[taskModel.get('id')] # TODO - move to model on destroy?
                     @collection.remove(taskModel)
-                    row.remove()
+                    $row.remove()
 
         $runNowLinks = @$el.find('[data-action="run-now"]')
 
         $runNowLinks.unbind('click').on 'click', (e) =>
             taskModel = @collection.get($(e.target).data('task-id'))
-            row = $(e.target).parents('tr')
+            $row = $(e.target).parents('tr')
 
             vex.dialog.confirm
                 message: "<p>Are you sure you want to run this task immediately:</p><pre>#{ taskModel.get('id') }</pre>"
@@ -64,11 +91,13 @@ class TasksView extends View
                     return unless confirmed
                     taskModel.run()
                     @collection.remove(taskModel)
-                    row.remove()
+                    $row.remove()
 
-    setUpSearchEvents: =>
+    setUpSearchEvents: (refresh) ->
         $search = @$el.find('input[type="search"]')
-        $search.focus() if $(window).width() > 568
+
+        if not app.isMobile and not refresh
+            $search.focus()
 
         $rows = @$el.find('tbody > tr')
 
