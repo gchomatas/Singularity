@@ -113,7 +113,7 @@ public class WebhookManager extends CuratorManager {
         LOG.warn(String.format("Web hook: '%s' does not exists", uri));
       }
     } catch (Exception e) {
-      LOG.warn(String.format("Failed to add web hook: %s", uri), e);
+      LOG.warn(String.format("Failed to remove web hook: %s", uri), e);
       Throwables.propagate(e);
     }
   }
