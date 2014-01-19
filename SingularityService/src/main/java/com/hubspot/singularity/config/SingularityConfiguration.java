@@ -21,6 +21,9 @@ public class SingularityConfiguration extends Configuration {
   
   @JsonProperty("smtp")
   private SMTPConfiguration smtpConfiguration;
+  
+  @JsonProperty("cors")
+  private CORSConfiguration corsConfiguration;
 
   @JsonProperty("hostname")
   private String hostname;
@@ -108,6 +111,14 @@ public class SingularityConfiguration extends Configuration {
 
   public void setSmtpConfiguration(SMTPConfiguration smtpConfiguration) {
     this.smtpConfiguration = smtpConfiguration;
+  }
+  
+  public CORSConfiguration getCorsConfiguration() {
+    return corsConfiguration;
+  }
+
+  public void setCorsConfiguration(CORSConfiguration corsConfiguration) {
+    this.corsConfiguration = corsConfiguration;
   }
 
   public String getHostname() {

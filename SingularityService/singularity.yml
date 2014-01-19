@@ -34,3 +34,9 @@ logging:
     "com.hubspot.singularity" : TRACE 
 
 appRoot: /v1
+
+cors:
+  prefix: /*
+  allowedOrigins:
+    - '*'
+    - localhost:4000
