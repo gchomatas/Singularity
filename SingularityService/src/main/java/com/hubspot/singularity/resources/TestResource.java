@@ -12,6 +12,7 @@ import com.google.inject.Inject;
 import com.hubspot.singularity.SingularityAbort;
 import com.hubspot.singularity.SingularityDriverManager;
 import com.hubspot.singularity.SingularityLeaderController;
+import com.hubspot.singularity.hooks.WebhookManager;
 
 @Path("/test")
 public class TestResource {
@@ -19,12 +20,14 @@ public class TestResource {
   private final SingularityAbort abort;
   private final SingularityLeaderController managed;
   private final SingularityDriverManager driverManager;
+  private final WebhookManager webhookManager;
   
   @Inject
-  public TestResource(SingularityLeaderController managed, SingularityAbort abort, SingularityDriverManager driverManager) {
+  public TestResource(SingularityLeaderController managed, SingularityAbort abort, SingularityDriverManager driverManager, WebhookManager webhookManager) {
     this.managed = managed;
     this.abort = abort;
     this.driverManager = driverManager;
+    this.webhookManager = webhookManager;
   }
   
   @POST
@@ -40,12 +43,14 @@ public class TestResource {
   @Path("/leader")
   public void setLeader() {
     managed.isLeader();
+    webhookManager.isLeader();
   }
   
   @POST
   @Path("/notleader")
   public void setNotLeader() {
     managed.notLeader();
+    webhookManager.notLeader();
   }
  
   @POST
