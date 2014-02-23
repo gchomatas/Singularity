@@ -19,7 +19,7 @@ import com.hubspot.singularity.hooks.WebhookManager;
 public class WebhookResource {
 
   private final WebhookManager webhookManager;
-  
+
   @Inject
   public WebhookResource(WebhookManager webhookManager) {
     this.webhookManager = webhookManager;
@@ -42,6 +42,10 @@ public class WebhookResource {
   @Path("/{hook}")
   public void removeHook(@PathParam("hook") String hook) {
     webhookManager.removeHook(hook);
+  }
+  
+  public WebhookManager getWebhookManager() {
+    return webhookManager;
   }
 
 }
