@@ -1,11 +1,15 @@
 View = require './view'
 
+Request = require '../models/Request'
+
 class RequestsView extends View
 
     templateRequestsActive: require './templates/requestsActive'
     templateRequestsPaused: require './templates/requestsPaused'
     templateRequestsPending: require './templates/requestsPending'
     templateRequestsCleaning: require './templates/requestsCleaning'
+
+    removeRequestTemplate: require './templates/vex/removeRequest'
 
     initialize: ->
         @lastRequestsFilter = @options.requestsFilter
@@ -26,10 +30,12 @@ class RequestsView extends View
         @collection.fetch()
 
     refresh: ->
-        return if @$el.find('input[type="search"]').val() isnt ''
+        return @ if @$el.find('input[type="search"]').val() isnt '' or @$el.find('[data-sorted-direction]').length
 
         @fetch(@lastRequestsFilter).done =>
             @render(@lastRequestsFilter, refresh = true)
+
+        @
 
     render: (requestsFilter, refresh) =>
         @lastRequestsFilter = requestsFilter
@@ -50,26 +56,31 @@ class RequestsView extends View
             @collection = app.collections.requestsCleaning
             template = @templateRequestsCleaning
 
-        context = {}
+        context =
+            collectionSynced: @collection.synced
 
         if @lastRequestsFilter in ['active', 'paused']
-            context.requests = _.filter(_.pluck(@collection.models, 'attributes'), (r) => not r.scheduled)
+            context.requests = _.filter(_.pluck(@collection.models, 'attributes'), (r) => not r.scheduled and not r.onDemand)
             context.requestsScheduled = _.filter(_.pluck(@collection.models, 'attributes'), (r) => r.scheduled)
+            context.requestsOnDemand = _.filter(_.pluck(@collection.models, 'attributes'), (r) => r.onDemand)
             context.requests.reverse()
             context.requestsScheduled.reverse()
+            context.requestsOnDemand.reverse()
 
         else
             context.requests = _.pluck(@collection.models, 'attributes')
 
         # Intersect starred requests before rendering
         for request in context.requests
-            if app.collections.requestsStarred.get(request.id)?
+            if app.collections.requestsStarred.get(request.name)?
                 request.starred = true
+
+        searchWasFocused = @$el.find('input[type="search"]').is(':focus')
 
         @$el.html template context
 
         @setupEvents()
-        @setUpSearchEvents(refresh)
+        @setUpSearchEvents(refresh, searchWasFocused)
         utils.setupSortableTables()
 
         @
@@ -78,14 +89,12 @@ class RequestsView extends View
         @$el.find('[data-action="viewJSON"]').unbind('click').on 'click', (e) ->
             utils.viewJSON 'request', $(e.target).data('request-id')
 
-        $removeLinks = @$el.find('[data-action="remove"]')
-
-        $removeLinks.unbind('click').on 'click', (e) =>
+        @$el.find('[data-action="remove"]').unbind('click').on 'click', (e) =>
             $row = $(e.target).parents('tr')
             requestModel = @collection.get($(e.target).data('request-id'))
 
             vex.dialog.confirm
-                message: "<p>Are you sure you want to delete the request:</p><pre>#{ requestModel.get('id') }</pre>"
+                message: @removeRequestTemplate(requestId: requestModel.get('id'))
                 callback: (confirmed) =>
                     return unless confirmed
                     requestModel.destroy()
@@ -93,9 +102,7 @@ class RequestsView extends View
                     @collection.remove(requestModel)
                     $row.remove()
 
-        $deletePausedLinks = @$el.find('[data-action="deletePaused"]')
-
-        $deletePausedLinks.unbind('click').on 'click', (e) =>
+        @$el.find('[data-action="deletePaused"]').unbind('click').on 'click', (e) =>
             $row = $(e.target).parents('tr')
             requestModel = @collection.get($(e.target).data('request-id'))
 
@@ -108,9 +115,7 @@ class RequestsView extends View
                         delete app.allRequests[requestModel.get('id')]
                         @collection.remove(requestModel)
 
-        $unpauseLinks = @$el.find('[data-action="unpause"]')
-
-        $unpauseLinks.unbind('click').on 'click', (e) =>
+        @$el.find('[data-action="unpause"]').unbind('click').on 'click', (e) =>
             $row = $(e.target).parents('tr')
             requestModel = @collection.get($(e.target).data('request-id'))
 
@@ -122,26 +127,37 @@ class RequestsView extends View
                     requestModel.unpause().done =>
                         @render()
 
-        $starLinks = @$el.find('[data-action="starToggle"]')
-
-        $starLinks.unbind('click').on 'click', (e) =>
+        @$el.find('[data-action="starToggle"]').unbind('click').on 'click', (e) =>
             $target = $(e.target)
+            $table = $target.parents('table')
 
-            requestId = $target.data('request-id')
+            requestName = $target.data('request-name')
             starred = $target.attr('data-starred') is 'true'
 
-            app.collections.requestsStarred.toggle(requestId)
+            app.collections.requestsStarred.toggle(requestName)
+            $requests = $table.find("""[data-request-name="#{ requestName }"]""")
 
             if starred
-                $target.attr('data-starred', 'false')
+                $requests.each -> $(@).attr('data-starred', 'false')
             else
-                $target.attr('data-starred', 'true')
+                $requests.each -> $(@).attr('data-starred', 'true')
 
-    setUpSearchEvents: (refresh) ->
+        @$el.find('[data-action="run-now"]').unbind('click').on 'click', (e) =>
+            requestModel = new Request id: $(e.target).data('request-id')
+            $row = $(e.target).parents('tr')
+
+            vex.dialog.confirm
+                message: "<p>Are you sure you want to run a task for this on-demand request immediately:</p><pre>#{ requestModel.get('id') }</pre>"
+                callback: (confirmed) =>
+                    return unless confirmed
+                    requestModel.run()
+                    utils.flashRow $row
+
+    setUpSearchEvents: (refresh, searchWasFocused) ->
         $search = @$el.find('input[type="search"]')
 
-        if not app.isMobile and not refresh
-            $search.focus()
+        if not app.isMobile and (not refresh or searchWasFocused)
+            setTimeout -> $search.focus()
 
         $rows = @$('tbody > tr')
 

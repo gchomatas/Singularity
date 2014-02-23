@@ -3,8 +3,13 @@ View = require './view'
 class TasksView extends View
 
     templateTasksActive: require './templates/tasksActive'
+    templateTasksActiveTable: require './templates/tasksActiveTable'
+
     templateTasksScheduled: require './templates/tasksScheduled'
+    templateTasksScheduledTable: require './templates/tasksScheduledTable'
+
     templateTasksCleaning: require './templates/tasksCleaning'
+    templateTasksCleaningTable: require './templates/tasksCleaningTable'
 
     killTaskTemplate: require './templates/vex/killTask'
 
@@ -24,38 +29,58 @@ class TasksView extends View
         @collection.fetch()
 
     refresh: ->
-        return if @$el.find('input[type="search"]').val() isnt ''
+        return @ if @$el.find('input[type="search"]').val() isnt '' or @$el.find('[data-sorted-direction]').length
 
         @fetch(@lastTasksFilter).done =>
             @render(@lastTasksFilter, refresh = true)
 
+        @
+
     render: (tasksFilter, refresh) ->
+        forceFullRender = tasksFilter isnt @lastTasksFilter
         @lastTasksFilter = tasksFilter
 
         if @lastTasksFilter is 'active'
             @collection = app.collections.tasksActive
             template = @templateTasksActive
+            templateTable = @templateTasksActiveTable
 
         if @lastTasksFilter is 'scheduled'
             @collection = app.collections.tasksScheduled
             template = @templateTasksScheduled
+            templateTable = @templateTasksScheduledTable
 
         if @lastTasksFilter is 'cleaning'
             @collection = app.collections.tasksCleaning
             template = @templateTasksCleaning
+            templateTable = @templateTasksCleaningTable
 
-        tasks = _.pluck(@collection.sort().models, 'attributes')
+        @refresh() if not @collection.synced
+
+        tasks = _.pluck @collection.sort().models, 'attributes'
 
         if @lastTasksFilter is 'active'
             tasks = tasks.reverse()
 
         context =
+            collectionSynced: @collection.synced
             tasks: tasks
 
-        @$el.html template context
+        partials =
+            partials:
+                tasksTable: templateTable
+
+        searchWasFocused = @$el.find('input[type="search"]').is(':focus')
+
+        $tasksTableContainer =  @$el.find('[data-tasks-table-container]')
+
+        if not $tasksTableContainer.length or forceFullRender
+            @$el.html template(context, partials)
+        else
+            $tasksTableContainer.html templateTable context
 
         @setupEvents()
-        @setUpSearchEvents(refresh)
+        @setUpSearchEvents(refresh, searchWasFocused)
         utils.setupSortableTables()
 
         @
@@ -91,13 +116,14 @@ class TasksView extends View
                     return unless confirmed
                     taskModel.run()
                     @collection.remove(taskModel)
+                    app.collections.tasksActive.fetch()
                     $row.remove()
 
-    setUpSearchEvents: (refresh) ->
+    setUpSearchEvents: (refresh, searchWasFocused) ->
         $search = @$el.find('input[type="search"]')
 
-        if not app.isMobile and not refresh
-            $search.focus()
+        if not app.isMobile and (not refresh or searchWasFocused)
+            setTimeout -> $search.focus()
 
         $rows = @$el.find('tbody > tr')
 

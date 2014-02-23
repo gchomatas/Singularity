@@ -5,7 +5,7 @@
 <section>
     <div class="row-fluid">
         <div class="span12">
-            <ul class="nav nav-tabs">
+            <ul class="nav nav-pills">
                 <li>
                     <a href="/singularity/requests" data-route="requests">Active</a>
                 </li>
@@ -51,7 +51,11 @@
                     </tbody>
                 </table>
             {{else}}
-                <center><p>No cleaning requests.</p></center>
+                {{#if collectionSynced}}
+                    <center><p>No cleaning requests.</p></center>
+                {{else}}
+                    <div class="page-loader centered"></div>
+                {{/if}}
             {{/if}}
         </div>
     </div>

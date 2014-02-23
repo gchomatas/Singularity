@@ -2,6 +2,7 @@ View = require './view'
 
 Task = require '../models/Task'
 TaskHistory = require '../models/TaskHistory'
+
 TaskFiles = require '../collections/TaskFiles'
 
 class TaskView extends View
@@ -13,21 +14,25 @@ class TaskView extends View
     initialize: =>
         @taskFiles = {}
 
+        @taskFilesFetchDone = false
+
         @taskHistory = new TaskHistory {}, taskId: @options.taskId
         @taskHistory.fetch().done =>
             @render()
 
             @taskFiles = new TaskFiles {}, { taskId: @options.taskId, offerHostname: @taskHistory.attributes.task.offer.hostname, directory: @taskHistory.attributes.directory }
             @taskFiles.fetch().done =>
+                @taskFilesFetchDone = true
                 @render()
 
     render: =>
-        return unless @taskHistory.attributes?.task?.id
+        return @ unless @taskHistory.attributes?.task?.id
 
         context =
             request: @taskHistory.attributes.task.taskRequest.request
             taskHistory: @taskHistory.attributes
             taskFiles: _.pluck(@taskFiles.models, 'attributes').reverse()
+            taskFilesFetchDone: @taskFilesFetchDone
 
         partials =
             partials:
@@ -38,6 +43,8 @@ class TaskView extends View
         @setupEvents()
 
         utils.setupSortableTables()
+
+        @
 
     setupEvents: =>
         @$el.find('[data-action="viewObjectJSON"]').unbind('click').on 'click', (e) ->

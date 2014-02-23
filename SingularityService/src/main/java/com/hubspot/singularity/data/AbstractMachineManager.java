@@ -1,7 +1,13 @@
 package com.hubspot.singularity.data;
 
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+import com.hubspot.singularity.SingularityCreateResult;
+import com.hubspot.singularity.SingularityDeleteResult;
+import com.hubspot.singularity.SingularityMachineAbstraction;
+import com.hubspot.singularity.SingularityMachineAbstraction.SingularityMachineState;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.zookeeper.KeeperException.NoNodeException;
@@ -9,12 +15,7 @@ import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
-import com.hubspot.singularity.SingularityMachineAbstraction;
-import com.hubspot.singularity.SingularityMachineAbstraction.SingularityMachineState;
+import java.util.List;
 
 public abstract class AbstractMachineManager<T extends SingularityMachineAbstraction> extends CuratorManager {
 
@@ -72,8 +73,7 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
     return getObjects(getDecomissioningRoot());
   }
   
-  public List<T> getDecomissioningObjectsFiltered() {
-    List<T> decomissioning = getDecomissioningObjects();
+  public List<T> getDecomissioningObjectsFiltered(List<T> decomissioning) {
     List<T> filtered = Lists.newArrayListWithCapacity(decomissioning.size());
     
     for (T object : decomissioning) {
@@ -88,6 +88,9 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
   private Optional<T> getObject(String path) {
     try {
       byte[] bytes = curator.getData().forPath(path);
+      if (bytes == null || bytes.length == 0) {
+        return Optional.absent();
+      }
       return Optional.of(fromBytes(bytes));
     } catch (NoNodeException nee) {
       return Optional.absent();
@@ -100,7 +103,7 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
     return getObject(getActivePath(objectId));
   }
   
-  public Optional<T> getDeadSlave(String objectId) {
+  public Optional<T> getDeadObject(String objectId) {
     return getObject(getDeadPath(objectId));
   }
   
@@ -163,13 +166,13 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
       return;
     }
  
-    if (delete(getActivePath(objectId)) != DeleteResult.DELETED) {
+    if (delete(getActivePath(objectId)) != SingularityDeleteResult.DELETED) {
       LOG.warn(String.format("Deleting active object at %s failed", getActivePath(objectId)));
     }
   
     activeObject.get().setState(SingularityMachineState.DEAD);
     
-    if (create(getDeadPath(objectId), Optional.of(activeObject.get().getAsBytes(objectMapper))) != CreateResult.CREATED) {
+    if (create(getDeadPath(objectId), Optional.of(activeObject.get().getAsBytes(objectMapper))) != SingularityCreateResult.CREATED) {
       LOG.warn(String.format("Creating dead object at %s failed", getDeadPath(objectId)));
     }
   }
@@ -192,11 +195,11 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
     mark(object, getDecomissioningPath(object.getId()), SingularityMachineState.DECOMISSIONED);
   }
   
-  public DeleteResult removeDecomissioning(String objectId) {
+  public SingularityDeleteResult removeDecomissioning(String objectId) {
     return delete(getDecomissioningPath(objectId));
   }
   
-  public DeleteResult removeDead(String objectId) {
+  public SingularityDeleteResult removeDead(String objectId) {
     return delete(getDeadPath(objectId));
   }
   

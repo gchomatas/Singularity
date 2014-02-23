@@ -1,5 +1,6 @@
 View = require './view'
 
+Request = require '../models/Request'
 RequestHistory = require '../models/RequestHistory'
 
 RequestTasks = require '../collections/RequestTasks'
@@ -9,9 +10,9 @@ class RequestView extends View
 
     template: require './templates/request'
 
-    initialize: =>
-        @request = app.allRequests[@options.requestId]
+    removeRequestTemplate: require './templates/vex/removeRequest'
 
+    initialize: =>
         @requestHistory = new RequestHistory {}, requestId: @options.requestId
         @requestHistory.fetch().done =>
             @requestHistory.fetched = true
@@ -23,12 +24,10 @@ class RequestView extends View
             @render()
 
     render: =>
-        if not @request
-            vex.dialog.alert("<p>Could not open a request by that ID.</p><pre>#{ @options.requestId }</pre>")
-            return
-
         context =
-            request: @request
+            request:
+                id: @options.requestId
+                name: utils.getShortRequestID @options.requestId
 
             fetchDoneHistory: @requestHistory.fetched
             requestHistory: @requestHistory.attributes
@@ -45,6 +44,8 @@ class RequestView extends View
         @setupEvents()
 
         utils.setupSortableTables()
+
+        @
 
     renderHistoricalTasksPaginated: ->
         @historicalTasks = new HistoricalTasks [],
@@ -140,6 +141,16 @@ class RequestView extends View
 
         @$el.find('[data-action="viewObjectJSON"]').unbind('click').on 'click', (e) ->
             utils.viewJSON 'request', $(e.target).data('request-id')
+
+        @$el.find('[data-action="remove"]').unbind('click').on 'click', (e) =>
+            requestModel = new Request id: $(e.target).data('request-id')
+
+            vex.dialog.confirm
+                message: @removeRequestTemplate(requestId: requestModel.get('id'))
+                callback: (confirmed) =>
+                    return unless confirmed
+                    requestModel.destroy()
+                    app.router.navigate 'requests', trigger: true
 
         $runNowLinks = @$el.find('[data-action="run-now"]')
 

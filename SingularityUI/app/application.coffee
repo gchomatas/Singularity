@@ -15,8 +15,12 @@ TasksCleaning = require 'collections/TasksCleaning'
 
 class Application
 
-    initialize: =>
+    initialize: ->
         app.isMobile = touchDevice = 'ontouchstart' of document.documentElement
+        app.setupGlobalErrorHandling()
+
+        app.$page = $('#page')
+        app.page = app.$page[0]
 
         @views = {}
         @collections = {}
@@ -24,33 +28,40 @@ class Application
         @allTasks = {}
         @allRequests = {}
 
-        @fetchResources =>
+        @setupAppCollections()
 
-            $('.page-loader.fixed').hide()
+        $('.page-loader.fixed').hide()
 
-            @router = new Router
+        @router = new Router
 
-            Backbone.history.start
-                pushState: location.hostname.substr(0, 'local'.length).toLowerCase() isnt 'local'
-                root: '/singularity/'
+        Backbone.history.start
+            pushState: location.hostname.substr(0, 'local'.length).toLowerCase() isnt 'local'
+            root: '/singularity/'
 
-            Object.freeze? @
+        Object.freeze? @
 
-    fetchResources: (success) =>
-        @resolveCountdown = 0
+    setupGlobalErrorHandling: ->
+        unloading = false
 
+        $(window).on 'beforeunload', ->
+            unloading = true
+            return
+
+        $(document).on 'ajaxError', (event, jqxhr, settings) ->
+            if not settings.suppressErrors and jqxhr.statusText isnt 'abort' and not unloading
+                vex.dialog.alert "<p>A <code>#{ jqxhr.statusText }</code> error occurred when trying to access:</p><pre>#{ settings.url }</pre><p>The request had status code <code>#{ jqxhr.status }</code>.</p><p>Here's the full <code>jqxhr</code> object:</p><pre>#{ utils.htmlEncode utils.stringJSON jqxhr }</pre>"
+
+    show: (view) ->
+        if app.page.children.length
+            app.page.replaceChild view.el, app.page.children[0]
+        else
+            app.page.appendChild view.el
+
+    setupAppCollections: ->
         @collections.requestsStarred = new RequestsStarred
-        @collections.requestsStarred.fetch()
+        @collections.requestsStarred.fetch() # Syncronous because it uses localStorage
 
-        resolve = =>
-            @resolveCountdown -= 1
-            success() if @resolveCountdown is 0
-
-        @resolveCountdown += 1
         @state = new State
-        @state.fetch
-            error: => vex.dialog.alert('An error occurred while trying to load the Singularity state.')
-            success: -> resolve()
 
         resources = [{
             collection_key: 'requestsActive'
@@ -83,13 +94,6 @@ class Application
         }]
 
         _.each resources, (r) =>
-            @resolveCountdown += 1
             @collections[r.collection_key] = new r.collection
-            @collections[r.collection_key].fetch
-                error: ->
-                    vex.dialog.alert("An error occurred while trying to load Singularity #{ r.error_phrase }.")
-                    resolve()
-                success: ->
-                    resolve()
 
 module.exports = new Application
