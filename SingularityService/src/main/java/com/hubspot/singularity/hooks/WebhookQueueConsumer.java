@@ -19,7 +19,7 @@ import com.ning.http.client.Response;
 
 public class WebhookQueueConsumer implements QueueConsumer<WebhookQueuedJob> {
 
-  private final static Logger LOG = LoggerFactory.getLogger(WebhookQueueConsumer.class);
+  private static final Logger log = LoggerFactory.getLogger(WebhookQueueConsumer.class);
 
   private AtomicInteger webhookRequestFailures = new AtomicInteger(0);
 
@@ -49,7 +49,7 @@ public class WebhookQueueConsumer implements QueueConsumer<WebhookQueuedJob> {
 
       @Override
       public void onThrowable(Throwable t) {
-        LOG.warn("Exception while posting to a web hook", t);
+        log.warn("Exception while posting to a web hook", t);
         Throwables.propagate(t);
       }
     };
@@ -57,13 +57,13 @@ public class WebhookQueueConsumer implements QueueConsumer<WebhookQueuedJob> {
 
   @Override
   public void stateChanged(CuratorFramework curator, ConnectionState connectionState) {
-    LOG.warn(String.format("Zookeeper queue state changed to: %s", connectionState.toString()));
+    log.warn("Zookeeper queue state changed to: {}", connectionState.toString());
   }
 
   @Override
   public void consumeMessage(WebhookQueuedJob job) throws Exception {
-    LOG.debug(String.format("I am queue consumer thread: %d. Posting to web hook: '%s' a status update about task with id '%s'. The new task status is: '%s'", Thread.currentThread().getId(), job.getHookURI(), job.getTaskUpdate().getTask()
-        .getTaskId(), job.getTaskUpdate().getState().toString()));
+    log.debug("I am queue consumer thread: {}. Posting to web hook: '{}' a status update about task with id '{}'. The new task status is: '{}'", 
+        Thread.currentThread().getId(), job.getHookURI(), job.getTaskUpdate().getTask().getTaskId(), job.getTaskUpdate().getState().toString());
 
     try {
       // We should block until response is back or request fails / timeouts
@@ -84,8 +84,8 @@ public class WebhookQueueConsumer implements QueueConsumer<WebhookQueuedJob> {
     } catch (Throwable t) {
       int failures = webhookRequestFailures.incrementAndGet();
       int retryDelayInMs = getRetryDelayInMs(failures);
-      LOG.warn(String.format("Web hook: '%s' is unavailable. Number of failures so far is: '%d'. We will wait for: '%d' seconds and then will requeue the task update job for task: '%s - %s'.", 
-          job.getHookURI(), failures, (retryDelayInMs / 1000), job.getTaskUpdate().getTask().getTaskId(), job.getTaskUpdate().getState().toString()));
+      log.warn("Web hook: '{}' is unavailable. Number of failures so far is: '{}'. We will wait for: '{}' seconds and then will requeue the task update job for task: '{} - {}'.", 
+          job.getHookURI(), failures, (retryDelayInMs / 1000), job.getTaskUpdate().getTask().getTaskId(), job.getTaskUpdate().getState().toString());
 
       Thread.sleep(retryDelayInMs, 0);
 
